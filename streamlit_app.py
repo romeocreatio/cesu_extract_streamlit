@@ -303,7 +303,7 @@ logo_path = project_root / "assets" / "logo_cesu83.jpeg"
 col_logo, col_title, col_spacer = st.columns([1, 2, 1])
 with col_logo:
     if logo_path.exists():
-        st.image(str(logo_path), use_container_width=True)
+        st.image(str(logo_path), use_container_width=90)
     else:
         st.markdown(
             "<div style='padding:14px;border:1px dashed #bbb;border-radius:8px;text-align:center;'>"
