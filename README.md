@@ -1,6 +1,6 @@
 📄 CESU 83 · Extracteur Automatisé de Rapports Qualité (Version Streamlit)
 
-🩺 Présentation du projet
+🩺 Présentation du projet eCESU
 
 Ce projet permet au CESU 83 d’extraire automatiquement les données des rapports qualité Digiforma, puis de les transformer en format JSON v2.1, JSON Excel, et enfin d’injecter les données dans un modèle Excel consolidé.
 
