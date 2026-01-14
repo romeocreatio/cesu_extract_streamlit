@@ -1,176 +1,191 @@
-📄 CESU 83 · Extracteur Automatisé de Rapports Qualité (Version Streamlit)
+📊 eCESU - Automatisation d’analyse de rapports qualité
 
-🩺 Présentation du projet eCESU
+🩺 Présentation du projet
 
-Ce projet permet au CESU 83 d’extraire automatiquement les données des rapports qualité Digiforma, puis de les transformer en format JSON v2.1, JSON Excel, et enfin d’injecter les données dans un modèle Excel consolidé.
+Ce projet vise à automatiser l’analyse de rapports qualité au format PDF, en particulier dans des contextes institutionnels ou organisationnels, afin de transformer des documents complexes et hétérogènes en données structurées, fiables et exploitables.
 
-L’application propose une interface Streamlit, utilisable :
+L’application prend en charge l’ensemble du cycle de traitement :
 
-En local (mode développement)
+ingestion des rapports PDF,
 
-Sur Streamlit Cloud (mode démo pour la responsable CESU)
+extraction intelligente des informations pertinentes,
 
-L’objectif est de fournir une version simple, stable et prête à l’emploi afin de centraliser et d’analyser les feedbacks des formations CESU.
+structuration normalisée des données,
 
-🚀 Fonctionnalités principales
+consolidation automatique dans des supports bureautiques standards.
 
-**1. Extraction PDF (Phase 1)**
+Le projet est conçu comme un système modulaire et industrialisable, et non comme une simple application de démonstration.
 
-Upload d’un PDF Digiforma (Rapport Qualité)
+🎯 Objectifs fonctionnels
 
-Lecture intelligente via :
+Réduire drastiquement le temps de traitement manuel des rapports
 
-pdfplumber (texte direct)
+Fiabiliser l’extraction et l’analyse des données qualité
 
-OCR automatique en fallback (si disponible)
+Centraliser les résultats dans des formats exploitables (Excel / Sheets)
 
-Appel d’un LLM (OpenAI) avec un prompt structuré
+Garantir la cohérence des indicateurs dans le temps
 
-Génération d’un JSON v2.1 propre, conforme au schéma OutputPayload
+Proposer une solution compatible avec des environnements institutionnels
 
-**2. Transformation en JSON Excel (Phase 2)**
+🚀 Fonctionnalités principales (vue fonctionnelle)
 
-Nettoyage et harmonisation complète des données
+1️⃣ Ingestion et lecture des rapports PDF
 
-Synthèses médicalisées ou professionnelles générées par l’IA
+Import de rapports qualité au format PDF
 
-Calculs automatiques : pourcentages, notes, impact, satisfaction, etc.
+Gestion des documents textuels et scannés
 
-Production d’un JSON Excel prêt à être injecté
+Extraction automatique du contenu pertinent
 
-**3. Génération Excel consolidé (Phase 3)**
+2️⃣ Structuration intelligente des données
 
-Injection du JSON Excel dans un template Excel
+Analyse du contenu via des modèles de langage
 
-Version cloud-friendly :
+Transformation en données structurées normalisées
 
-Aucune écriture sur disque
+Harmonisation des formats (notes, pourcentages, verbatims)
 
-Génération d’un fichier Excel en mémoire
+3️⃣ Calculs et synthèses automatiques
 
-Téléchargement direct du fichier .xlsx final
+Calcul d’indicateurs clés (satisfaction, impact, répartition)
 
-🧱 Architecture du projet
+Nettoyage et regroupement des réponses textuelles
 
-cesu-rapport-qualite-demo/
-│
-├── streamlit_app.py        → Interface Streamlit principale
-├── requirements.txt        → Dépendances projet
-├── .streamlit/             → Fichiers secrets (ignorés par Git)
-│    └── secrets.toml
-│
-├── utils/                  → Modules internes
-│    ├── pdf_reader.py
-│    ├── llm_client.py
-│    ├── convert_v2_to_excel.py
-│    ├── excel_writer.py
-│    └── schema.py
-│
-├── templates/
-│    └── maquette.xlsx      → Modèle Excel consolidé
-│
-├── prompts/
-│    └── prompt_reference.txt
-│
-├── assets/
-│    └── logo_cesu83.jpeg
-│
-├── json_v2/                → JSON v2.1 générés (local)
-├── json_excel/             → JSON Excel générés (local)
-└── README.md
+Génération de synthèses exploitables
 
-**🔐 Gestion des clés API (OpenAI)**
+4️⃣ Export et consolidation
 
-Local (mode dev)
+Injection automatisée dans :
 
-Créer un .env à la racine :
+un modèle Excel structuré
 
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxx
-OPENAI_MODEL=gpt-4.1-mini
+un Google Sheets sécurisé
 
-Streamlit Cloud (mode démo)
+Alignement strict avec des schémas de données prédéfinis
 
-Dans Settings → Secrets, ajouter :
+Aucun retraitement manuel requis
 
-OPENAI_API_KEY = "sk-xxxxxxxxxxxxxxxx"
-OPENAI_MODEL   = "gpt-4.1-mini"
-USERNAME       = "xxx"
-PASSWORD       = "xxx"
+🧩 Cas d’usage
 
-🔑 Sécurisation de l’application
+Analyse qualité de formations ou dispositifs
 
-L’accès à l’app est protégé par une authentification simple :
+Consolidation multi-périodes ou multi-sessions
 
-Login : configurable dans secrets.toml
+Préparation d’indicateurs de pilotage
 
-Mot de passe : configurable dans secrets.toml
+Appui à la prise de décision
 
-Le code lit les credentials via :
+Réduction des erreurs liées à la ressaisie manuelle
 
-[auth]
-USERNAME = "xxx"
-PASSWORD = "xxx"
+🏗️ Architecture générale
 
-📦 Installation (mode local)
-1. Cloner le repo
-git clone https://github.com/<votre-user>/cesu-rapport-qualite-demo.git
-cd cesu-rapport-qualite-demo
+Le projet repose sur une architecture en pipeline, découpée en étapes indépendantes :
 
-2. Créer un environnement virtuel
-python -m venv .venv
-.\.venv\Scripts\activate
+Extraction du contenu PDF
 
-3. Installer les dépendances
-pip install -r requirements.txt
+Analyse et structuration des données
 
-4. Lancer l’application
-streamlit run streamlit_app.py
+Validation via des schémas de données stricts
 
-📤 Déploiement Streamlit Cloud
+Transformation métier (calculs, synthèses)
 
-Aller sur : https://share.streamlit.io
+Injection vers les supports d’exploitation
 
-Connecter votre GitHub
+Chaque étape est isolée afin de garantir :
 
-Sélectionner le repo
+maintenabilité,
 
-Entrypoint :
+testabilité,
 
-streamlit_app.py
+évolutivité,
 
+robustesse en production.
 
-Ajouter les secrets (OpenAI + login)
+🧠 Partie technique (niveau maîtrisé, non sensible)
 
-Cliquer sur Deploy 🚀
+🔹 Technologies clés
 
-🛡️ .gitignore (sécurisé)
+Python (cœur applicatif)
 
-Le projet ignore uniquement :
+Streamlit (interface utilisateur)
 
-.streamlit/ → contient les clés API locales
+Pydantic (contrats et validation de données)
 
-.venv/ → venv local
+LLM (OpenAI API) pour l’analyse sémantique et les synthèses
 
-__pycache__/ → fichiers Python compilés
+Extraction PDF + OCR (documents textuels ou scannés)
 
-fichiers systèmes / logs
+Excel (openpyxl) pour la consolidation locale
 
-Tous les fichiers nécessaires au déploiement sont versionnés.
+Google Sheets API pour l’exploitation cloud
 
-🧪 Tests réalisés
+Google Cloud Platform pour l’authentification sécurisée
 
-Extraction PDF → OK
+🔹 Gestion des données
 
-Transformation JSON → OK
+Utilisation de schémas stricts pour éviter toute dérive des données
 
-Génération Excel → OK
+Normalisation des formats numériques et textuels
 
-Authentification → OK
+Séparation claire entre données intermédiaires et données finales
 
-Compatibilité Streamlit Cloud → OK
+Traçabilité complète du pipeline de transformation
 
-👨‍💻 Auteur
+Cette approche garantit des résultats cohérents, reproductibles et exploitables à grande échelle.
 
-Développé par Roméo Botuli, Ingénieur Data & IA.
+🔹 Sécurité et bonnes pratiques
 
-Projet réalisé pour le CESU 83.
+Accès aux ressources cloud via comptes de service
+
+Permissions limitées au périmètre strictement nécessaire
+
+Aucune clé ou information sensible versionnée
+
+Séparation des environnements (développement / démonstration / production)
+
+Aucun accès utilisateur direct aux ressources critiques
+
+Les choix techniques sont pensés pour répondre aux contraintes d’environnements professionnels et institutionnels.
+
+🔹 Déploiement
+
+Version locale pour développement et validation
+
+Version cloud (Streamlit) pour démonstration contrôlée
+
+Désactivation des écritures locales en environnement cloud
+
+Architecture compatible avec une montée en charge progressive
+
+⭐ Points forts du projet
+
+Automatisation complète de bout en bout
+
+Architecture modulaire et industrialisable
+
+Forte fiabilité des données
+
+Sécurité intégrée dès la conception
+
+Compatible avec des environnements institutionnels
+
+Facilement extensible à d’autres formats ou cas d’usage
+
+👨‍💻 À propos
+
+Ce projet illustre une approche orientée :
+
+ingénierie des données
+
+automatisation intelligente
+
+qualité et gouvernance des données
+
+industrialisation des processus
+
+Il a été conçu comme un système robuste, destiné à transformer des processus manuels complexes en chaînes de traitement fiables, reproductibles et scalables.
+
+✍️ Auteur
+
+Développé par Roméo Botuli Ingénieur Data & Intelligence Artificielle Projet réalisé dans un contexte institutionnel (CESU 83)
