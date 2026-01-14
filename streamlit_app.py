@@ -10,7 +10,7 @@ import streamlit as st
 # phase 1
 from utils.pdf_reader import read_pdf_all_text
 from utils.llm_client import load_prompt, call_llm_extract_json
-from utils.schema import OutputPayload  # v2.1
+from utils.schema import OutputPayload  # v2.2
 
 # phase 2
 from utils.convert_v2_to_excel import generate_json_excel
@@ -307,7 +307,7 @@ with col_logo:
         )
 with col_title:
     st.markdown(
-        "<h2 style='text-align:center;margin-top:0;'>CESU 83 — Extracteur de Rapports Qualité</h2>",
+        "<h2 style='text-align:center;margin-top:0;'>eCESU — Extracteur de Rapports Qualité</h2>",
         unsafe_allow_html=True,
     )
 
