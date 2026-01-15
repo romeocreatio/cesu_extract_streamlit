@@ -1,4 +1,4 @@
-📊 eCESU - Automatisation d’analyse de rapports qualité
+📊 CESU-EXTRACT - Extracteur de rapports qualité
 
 🩺 Présentation du projet
 
