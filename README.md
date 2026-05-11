@@ -154,7 +154,7 @@ Les choix techniques sont pensés pour répondre aux contraintes d’environneme
 
 - Version locale pour développement et validation
 
-- Version cloud (Streamlit) pour démonstration contrôlée
+- Version cloud (Streamlit) pour démonstration contrôlée et production
 
 - Désactivation des écritures locales en environnement cloud
 
