@@ -58,3 +58,9 @@ $RECYCLE.BIN/
 *.bak
 *.swp
 *.orig
+
+###############################################
+# 6. fichiers temporaires json
+###############################################
+json_v2/*.json
+json_excel/*.json
