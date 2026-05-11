@@ -307,7 +307,7 @@ with col_logo:
         )
 with col_title:
     st.markdown(
-        "<h2 style='text-align:center;margin-top:0;'>CESU 83 — Extracteur de Rapports Qualité </h2>",
+        "<h2 style='text-align:center;margin-top:0;'> CESU 83 — Extracteur de Rapports Qualité </h2>",
         unsafe_allow_html=True,
     )
 
