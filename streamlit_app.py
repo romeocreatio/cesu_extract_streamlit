@@ -356,7 +356,7 @@ if submitted:
         st.stop()
 
     # 3) Appel IA (le LLM peut renvoyer ancien schéma / v2 / v2.1)
-    with st.spinner("Extraction des données par sessions via l'IA ..."):
+    with st.spinner("Extraction des données par session via l'IA ..."):
         try:
             json_result = call_llm_extract_json(
                 prompt_master,
@@ -436,7 +436,7 @@ if submitted:
 
     # 10) Téléchargement JSON v2.2
     st.download_button(
-        label="📥 Télécharger le JSON v2.2",
+        label="📥 Télécharger le fichier",
         data=json_str,
         file_name=safe_name,
         mime="application/json",
@@ -465,8 +465,22 @@ def list_json_v2_files():
 
 
 files = list_json_v2_files()
+files = list_json_v2_files()
 if not files:
-    st.info("Aucun fichier trouvé dans /json_v2 pour le moment.")
+    st.info(
+        """
+        ℹ️ Aucun fichier d'analyse n'est disponible pour le moment.
+
+        Pour utiliser la Phase 2, vous devez d'abord exécuter la Phase 1 :
+        1. Renseigner le nom de la formation.
+        2. Indiquer le semestre et l'année.
+        3. Importer le rapport qualité Digiforma (PDF).
+        4. Cliquer sur « Analyser le rapport ».
+
+        Une fois l'analyse terminée, le fichier JSON sera généré automatiquement
+        et pourra être sélectionné dans cette étape.
+        """
+    )
 else:
     with st.form("form_excel", clear_on_submit=False):
         c1, c2 = st.columns([2, 1])
