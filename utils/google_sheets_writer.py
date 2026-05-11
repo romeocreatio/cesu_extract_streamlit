@@ -170,7 +170,7 @@ def append_json_to_google_sheet(
         val = json_excel.get(h.strip())
         row_values.append(_coerce_cell_value(val))
 
-    ws.append_row(row_values, value_input_option="USER_ENTERED")
+    ws.append_row(row_values, value_input_option="RAW")
 
     # Méthode simple: récupérer le nombre total de lignes après append
     inserted_row_idx = len(ws.get_all_values())
