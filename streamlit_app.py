@@ -29,16 +29,21 @@ def check_auth():
     Authentification basique (login + mot de passe).
 
     Sources possibles :
-    1) Variables d'environnement / secrets plats (Cloud ou .env) :
-       - AUTH_USERNAME ou USERNAME
-       - AUTH_PASSWORD ou PASSWORD
-    2) Secrets sectionnés (local : .streamlit/secrets.toml) :
-       [auth]
-       USERNAME = "..."
-       PASSWORD = "..."
+    1) Secrets plats Streamlit Cloud :
+    - AUTH_USERNAME ou USERNAME
+    - AUTH_PASSWORD ou PASSWORD
+    2) Secrets sectionnés local / cloud :
+    [auth]
+    USERNAME = "..."
+    PASSWORD = "..."
+
+    Remarque :
+    On évite volontairement os.getenv("USERNAME"), car sous Windows cette variable
+    existe déjà et peut entrer en conflit avec l'identifiant applicatif.
     """
     username = None
     password = None
+
     # 1) Essayer d'abord env / secrets plats
     #username = os.getenv("AUTH_USERNAME") or os.getenv("USERNAME")
     #password = os.getenv("AUTH_PASSWORD") or os.getenv("PASSWORD")
@@ -340,7 +345,7 @@ with st.form("meta_form", clear_on_submit=False):
     with c2:
         semestre = st.text_input("Semestre", placeholder="ex: S1 2025")
 
-    uploaded_pdf = st.file_uploader("Uploader le rapport qualité", type=["pdf"])
+    uploaded_pdf = st.file_uploader("Charger le rapport qualité", type=["pdf"])
     submitted = st.form_submit_button("Analyser le rapport", use_container_width=True, type="primary")
 
 if submitted:
@@ -350,7 +355,7 @@ if submitted:
 
     # 1) Lecture du PDF complet (texte brut + OCR fallback si vide)
     file_bytes = uploaded_pdf.read()
-    with st.spinner("Lecture du fichier (texte + OCR si nécessaire) ..."):
+    with st.spinner("Lecture en cours du fichier (texte + OCR si nécessaire) ..."):
         full_text, pages_text, used_ocr = read_pdf_all_text(file_bytes)
         page_count = len(pages_text)
         char_count = len(full_text)
@@ -395,7 +400,7 @@ if submitted:
         st.stop()
 
     # 3) Appel IA (le LLM peut renvoyer ancien schéma / v2 / v2.1)
-    with st.spinner("Extraction des données par session via l'IA ..."):
+    with st.spinner("Extraction des données par session en cours ..."):
         try:
             json_result = call_llm_extract_json(
                 prompt_master,
@@ -445,12 +450,12 @@ if submitted:
     path_v2 = DIR_JSON_V2 / safe_name
     path_v2.write_text(json_str, encoding="utf-8")
 
-    st.success(f"Extraction réussie ✅ — Fichier enregistré dans json_v2 : {path_v2.name}")
+    st.success(f"Extraction réussie ✅ — Fichier temporairement enregistré dans json_v2 : {path_v2.name}")
 
     # 8) Affichage JSON (dans des expanders)
     st.subheader("Résultat de l'extraction")
 
-    with st.expander("🧾 Aperçu du JSON", expanded=False):
+    with st.expander("🧾 Aperçu du schéma", expanded=False):
         st.code(json_str, language="json")
 
     # 9) Avertissements sections manquantes (ou vides)
@@ -508,7 +513,6 @@ def list_json_v2_files():
 
 
 files = list_json_v2_files()
-files = list_json_v2_files()
 if not files:
     st.info(
         """
@@ -528,12 +532,12 @@ else:
     with st.form("form_excel", clear_on_submit=False):
         c1, c2 = st.columns([2, 1])
         with c1:
-            selected = st.selectbox("Choisir un fichier JSON (v2.2) :", files, index=0)
+            selected = st.selectbox("Choisir un fichier :", files, index=0)
         with c2:
             demande_as_list = st.toggle(
                 "Sujets en liste (Excel)",
                 value=True,
-                help="Si OFF, une phrase de synthèse sera générée (comme ton exemple).",
+                help="Si OFF, une phrase de synthèse sera générée.",
             )
 
         do_transform = st.form_submit_button("Créer le JSON Excel", use_container_width=True, type="primary")
@@ -546,7 +550,7 @@ else:
             st.error(f"Impossible de lire {selected} : {e}")
             st.stop()
 
-        with st.spinner("Transformation json v2 ➜ json_excel (règles + IA) en cours ..."):
+        with st.spinner("Transformation du schéma json ➜ json_excel en cours ..."):
             json_excel = generate_json_excel(v2_payload, DEMANDE_AS_LIST=demande_as_list)
 
         # nom de sortie identique
