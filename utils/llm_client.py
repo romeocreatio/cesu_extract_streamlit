@@ -80,7 +80,7 @@ def _get_openai_client_and_model():
     return client, model
 
 
-def call_llm_extract_json(prompt_master: str, full_text: str, meta: dict) -> dict:
+def call_llm_extract_json(prompt_master: str, full_text: str, meta: dict, model_override: str | None = None) -> dict:
     """
     Appelle un LLM avec response_format JSON.
     Utilise :
@@ -88,6 +88,9 @@ def call_llm_extract_json(prompt_master: str, full_text: str, meta: dict) -> dic
       - ou les secrets Streamlit (plats ou sectionnés).
     """
     client, model = _get_openai_client_and_model()
+
+    if model_override:
+        model = model_override
 
     system_msg = (
         "Tu es un extracteur documentaire strict. "
@@ -109,7 +112,12 @@ def call_llm_extract_json(prompt_master: str, full_text: str, meta: dict) -> dic
     )
 
     raw = resp.choices[0].message.content
-    data = _coerce_json(raw)
+
+    try:
+        data = _coerce_json(raw)
+    except Exception as e:
+        preview = raw[:500] if raw else "VIDE"
+        raise ValueError(f"Réponse LLM non JSON. Début réponse: {preview}") from e
 
     # Nettoyages simples (décimales FR, %)
     def _norm_numbers(obj):

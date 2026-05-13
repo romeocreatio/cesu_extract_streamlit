@@ -37,10 +37,11 @@ def check_auth():
        USERNAME = "..."
        PASSWORD = "..."
     """
-
+    username = None
+    password = None
     # 1) Essayer d'abord env / secrets plats
-    username = os.getenv("AUTH_USERNAME") or os.getenv("USERNAME")
-    password = os.getenv("AUTH_PASSWORD") or os.getenv("PASSWORD")
+    #username = os.getenv("AUTH_USERNAME") or os.getenv("USERNAME")
+    #password = os.getenv("AUTH_PASSWORD") or os.getenv("PASSWORD")
 
     try:
         # secrets plats (cloud) → st.secrets["AUTH_USERNAME"], st.secrets["USERNAME"], etc.
@@ -110,6 +111,19 @@ check_auth()
 # =====================================================
 # 🔧 Helpers extraction / correction
 # =====================================================
+
+def get_secret_value(name: str, default: str | None = None) -> str | None:
+    """
+    Lit une valeur dans Streamlit Secrets, puis dans les variables
+    d'environnement si elle n'existe pas.
+    """
+    try:
+        if name in st.secrets:
+            return str(st.secrets[name])
+    except Exception:
+        pass
+
+    return os.getenv(name, default)
 
 def _safe_float(x):
     try:
@@ -338,6 +352,31 @@ if submitted:
     file_bytes = uploaded_pdf.read()
     with st.spinner("Lecture du fichier (texte + OCR si nécessaire) ..."):
         full_text, pages_text, used_ocr = read_pdf_all_text(file_bytes)
+        page_count = len(pages_text)
+        char_count = len(full_text)
+
+        # Détection d'un rapport volumineux
+        is_large_pdf = page_count > 80 or char_count > 180000
+
+        # Choix automatique du modèle
+        if is_large_pdf:
+            model_to_use = get_secret_value("OPENAI_MODEL_LARGE", "gpt-4.1")
+        else:
+            model_to_use = get_secret_value("OPENAI_MODEL", "gpt-4.1-mini")
+
+        # Information utilisateur
+        if is_large_pdf:
+            st.warning(
+                f"Rapport volumineux détecté : {page_count} pages, "
+                f"{char_count:,} caractères.\n\n"
+                f"Traitement avec le modèle renforcé : {model_to_use}."
+            )
+        else:
+            st.info(
+                f"Rapport standard détecté : {page_count} pages, "
+                f"{char_count:,} caractères.\n\n"
+                f"Traitement avec le modèle standard : {model_to_use}."
+            )
 
     with st.expander("🔎 Aperçu du texte lu (pré-traitement)", expanded=False):
         st.markdown(f"**OCR utilisé :** {'✅ Oui' if used_ocr else '❌ Non'}")
@@ -365,7 +404,11 @@ if submitted:
                     "nom_formation": nom_formation,
                     "semestre": semestre,
                     "filename": uploaded_pdf.name,
+                    "page_count": page_count,
+                    "char_count": char_count,
+                    "is_large_pdf": is_large_pdf,
                 },
+                model_override=model_to_use,
             )
         except Exception as e:
             st.error(f"Erreur IA: {e}")
