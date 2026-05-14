@@ -124,8 +124,9 @@ Transformation métier
 JSON Excel
     ↓
 Google Sheets / Excel
+```
 
-**Chaque étape est isolée afin de garantir :** 
+## Chaque étape est isolée afin de garantir :
 
 Maintenabilité
 Testabilité
@@ -134,7 +135,7 @@ Traçabilité
 Évolutivité
 
 
-🌐 Déploiement
+## 🌐 Déploiement
 L'application est déployée sur Streamlit Community Cloud.
 
 Architecture de déploiement :
@@ -144,7 +145,7 @@ Déploiement automatique via GitHub
 Gestion sécurisée des secrets
 Authentification applicative
 
-🔐 Sécurité et bonnes pratiques
+## 🔐 Sécurité et bonnes pratiques
 Authentification simple par identifiant / mot de passe
 Utilisation de comptes de service Google
 Permissions minimales
@@ -153,7 +154,7 @@ Secrets gérés via Streamlit Secrets
 Séparation développement / production
 Workflow Git structuré
 
-🧠 Technologies utilisées
+## 🧠 Technologies utilisées
 Backend & Application
 Python
 Streamlit
@@ -177,7 +178,7 @@ Git / GitHub
 Branching strategy
 Validation de schémas
 
-📊 Résultats obtenus
+## 📊 Résultats obtenus
 Automatisation complète du processus de traitement
 Réduction majeure du temps de consolidation
 Suppression de la ressaisie manuelle
@@ -187,7 +188,7 @@ Traçabilité complète des transformations
 Support des rapports de plus de 180 pages
 Déploiement opérationnel en environnement institutionnel
 
-⭐ Points forts du projet
+## ⭐ Points forts du projet
 Solution de bout en bout
 Architecture modulaire et industrialisable
 Adaptation automatique à la volumétrie documentaire
@@ -196,7 +197,7 @@ Intégration cloud sécurisée
 Compatible avec des environnements institutionnels
 Facilement extensible à d'autres cas d'usage
 
-👨‍💻 À propos
+## 👨‍💻 À propos
 
 Ce projet illustre une approche combinant :
 Data Engineering
