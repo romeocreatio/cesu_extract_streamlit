@@ -1,200 +1,215 @@
-📊 CESU-EXTRACT - Extracteur de rapports qualité
+# 📊 CESU-EXTRACT — Extracteur Intelligent de Rapports Qualité
 
-🩺 Présentation du projet
+## 🩺 Présentation du projet
 
-Ce projet vise à automatiser l’analyse de rapports qualité au format PDF, en particulier dans des contextes institutionnels ou organisationnels, afin de transformer des documents complexes et hétérogènes en données structurées, fiables et exploitables.
+CESU-EXTRACT est une application d'automatisation documentaire conçue pour analyser des rapports qualité au format PDF et les transformer en données structurées, normalisées et directement exploitables.
 
-L’application prend en charge l’ensemble du cycle de traitement :
+Le projet répond à un besoin métier concret : automatiser le traitement de rapports qualité issus de plateformes de formation, afin de supprimer la ressaisie manuelle, fiabiliser les indicateurs et accélérer la consolidation des résultats.
 
-- ingestion des rapports PDF,
+L'application couvre l'intégralité de la chaîne de traitement :
 
-- extraction intelligente des informations pertinentes,
+- 📥 Ingestion de rapports PDF (textuels ou scannés)
+- 🧠 Extraction intelligente des informations via modèles de langage (LLM)
+- 🧩 Structuration selon un schéma de données strict
+- 📈 Calcul automatique d'indicateurs qualité
+- 📝 Génération de synthèses et regroupement des verbatims
+- 📊 Transformation vers un format Excel normalisé
+- ☁️ Injection automatisée dans Google Sheets
+- 🌐 Déploiement cloud via Streamlit
 
-- structuration normalisée des données,
+Le projet a été conçu comme une solution modulaire, robuste et industrialisable, destinée à des environnements institutionnels et professionnels.
 
-- consolidation automatique dans des supports bureautiques standards.
+---
 
-Le projet est conçu comme un système modulaire et industrialisable, et non comme une simple application de démonstration.
-
-🎯 Objectifs fonctionnels
+## 🎯 Objectifs fonctionnels
 
 - Réduire drastiquement le temps de traitement manuel des rapports
+- Supprimer les tâches de ressaisie et de consolidation manuelle
+- Fiabiliser l'extraction et l'interprétation des données qualité
+- Standardiser les indicateurs dans le temps
+- Centraliser les résultats dans des formats directement exploitables
+- Faciliter le pilotage, le reporting et l'aide à la décision
+- Proposer une solution sécurisée et compatible avec les contraintes institutionnelles
 
-- Fiabiliser l’extraction et l’analyse des données qualité
+---
 
-- Centraliser les résultats dans des formats exploitables (Excel / Sheets)
+## 🚀 Fonctionnalités principales
 
-- Garantir la cohérence des indicateurs dans le temps
-
-- Proposer une solution compatible avec des environnements institutionnels
-  
-
-🚀 Fonctionnalités principales (vue fonctionnelle)
-
-1️⃣ Ingestion et lecture des rapports PDF
+## 1️⃣ Ingestion et lecture des rapports PDF
 
 - Import de rapports qualité au format PDF
+- Support des documents natifs et scannés
+- Extraction de texte avec OCR si nécessaire
+- Gestion de documents volumineux (>150 pages)
 
-- Gestion des documents textuels et scannés
+## 2️⃣ Extraction intelligente des données
 
-- Extraction automatique du contenu pertinent
+- Analyse sémantique du contenu via OpenAI API
+- Extraction des indicateurs quantitatifs et qualitatifs
+- Harmonisation des notes, pourcentages et verbatims
+- Structuration automatique des réponses ouvertes
 
-2️⃣ Structuration intelligente des données
+## 3️⃣ Validation et normalisation
 
-- Analyse du contenu via des modèles de langage
+- Validation stricte via Pydantic
+- Contrôle des types et de la cohérence des données
+- Normalisation des formats numériques et textuels
+- Détection des sections manquantes ou incomplètes
 
-- Transformation en données structurées normalisées
+## 4️⃣ Calculs et synthèses automatiques
 
-- Harmonisation des formats (notes, pourcentages, verbatims)
+- Calcul des notes globales
+- Mesure de la progression des compétences
+- Agrégation des distributions de satisfaction
+- Synthèse automatique des points forts et axes d'amélioration
 
-3️⃣ Calculs et synthèses automatiques
+## 5️⃣ Transformation métier
 
-- Calcul d’indicateurs clés (satisfaction, impact, répartition)
+- Conversion du schéma d'extraction vers un schéma Excel métier
+- Alignement strict avec le modèle de consolidation institutionnel
+- Génération d'un JSON intermédiaire compatible avec les supports bureautiques
 
-- Nettoyage et regroupement des réponses textuelles
+## 6️⃣ Consolidation et exploitation
 
-- Génération de synthèses exploitables
-
-4️⃣ Export et consolidation
-
-- Injection automatisée dans :
-
-- un modèle Excel structuré
-
-- un Google Sheets sécurisé
-
-- Alignement strict avec des schémas de données prédéfinis
-
+- Export local vers JSON Excel
+- Injection automatisée dans Google Sheets
+- Compatibilité avec des modèles Excel existants
 - Aucun retraitement manuel requis
 
-🧩 Cas d’usage
+---
 
-- Analyse qualité de formations ou dispositifs
+## 📈 Optimisation pour les rapports volumineux
 
-- Consolidation multi-périodes ou multi-sessions
+L'application détecte automatiquement la taille des rapports PDF et sélectionne dynamiquement le modèle OpenAI le plus adapté.
 
-- Préparation d’indicateurs de pilotage
+| Type de rapport | Critère | Modèle utilisé |
+|----------------|--------:|----------------|
+| Standard | ≤ 80 pages et ≤ 180 000 caractères | `gpt-4.1-mini` |
+| Volumineux | > 80 pages ou > 180 000 caractères | `gpt-4.1` |
 
-- Appui à la prise de décision
+Cette optimisation permet de traiter de manière fiable des rapports de plus de 150 pages comportant plusieurs centaines de réponses participants.
 
-- Réduction des erreurs liées à la ressaisie manuelle
+---
 
-🏗️ Architecture générale
+## 🧩 Cas d'usage
 
-- Le projet repose sur une architecture en pipeline, découpée en étapes indépendantes :
+- Analyse qualité de formations
+- Consolidation multi-sessions
+- Suivi semestriel ou annuel
+- Préparation d'indicateurs de pilotage
+- Reporting institutionnel
+- Appui à la décision
+- Réduction des erreurs de ressaisie
+- Standardisation des pratiques d'analyse
 
-- Extraction du contenu PDF
+---
 
-- Analyse et structuration des données
+## 🏗️ Architecture générale
 
-- Validation via des schémas de données stricts
+Le projet repose sur une architecture pipeline modulaire :
 
-- Transformation métier (calculs, synthèses)
+```text
+PDF Digiforma
+    ↓
+Extraction texte + OCR
+    ↓
+Analyse LLM (OpenAI)
+    ↓
+Validation Pydantic
+    ↓
+JSON structuré (v2.x)
+    ↓
+Transformation métier
+    ↓
+JSON Excel
+    ↓
+Google Sheets / Excel
 
-- Injection vers les supports d’exploitation
+**Chaque étape est isolée afin de garantir :** 
 
-Chaque étape est isolée afin de garantir :
+Maintenabilité
+Testabilité
+Robustesse
+Traçabilité
+Évolutivité
 
-- maintenabilité,
 
-- testabilité,
+🌐 Déploiement
+L'application est déployée sur Streamlit Community Cloud.
 
-- évolutivité,
+Architecture de déploiement :
+Développement local
+Gestion des branches Git (dev → main)
+Déploiement automatique via GitHub
+Gestion sécurisée des secrets
+Authentification applicative
 
-- robustesse en production.
-  
+🔐 Sécurité et bonnes pratiques
+Authentification simple par identifiant / mot de passe
+Utilisation de comptes de service Google
+Permissions minimales
+Aucune clé sensible versionnée
+Secrets gérés via Streamlit Secrets
+Séparation développement / production
+Workflow Git structuré
 
-🧠 Partie technique (niveau maîtrisé, non sensible)
+🧠 Technologies utilisées
+Backend & Application
+Python
+Streamlit
+Intelligence Artificielle
+OpenAI API
+GPT-4.1-mini
+GPT-4.1
+Data Engineering
+Pydantic
+JSON
+openpyxl
+Document Processing
+PDF parsing
+OCR
+Cloud & APIs
+Google Sheets API
+Google Cloud Platform
+Streamlit Cloud
+Qualité logicielle
+Git / GitHub
+Branching strategy
+Validation de schémas
 
-🔹 Technologies clés
-
-- Python (cœur applicatif)
-
-- Streamlit (interface utilisateur)
-
-- Pydantic (contrats et validation de données)
-
-- LLM (OpenAI API) pour l’analyse sémantique et les synthèses
-
-- Extraction PDF + OCR (documents textuels ou scannés)
-
-- Excel (openpyxl) pour la consolidation locale
-
-- Google Sheets API pour l’exploitation cloud
-
-- Google Cloud Platform pour l’authentification sécurisée
-
-🔹 Gestion des données
-
-- Utilisation de schémas stricts pour éviter toute dérive des données
-
-- Normalisation des formats numériques et textuels
-
-- Séparation claire entre données intermédiaires et données finales
-
-- Traçabilité complète du pipeline de transformation
-
-Cette approche garantit des résultats cohérents, reproductibles et exploitables à grande échelle.
-
-🔹 Sécurité et bonnes pratiques
-
-- Accès aux ressources cloud via comptes de service
-
-- Permissions limitées au périmètre strictement nécessaire
-
-- Aucune clé ou information sensible versionnée
-
-- Séparation des environnements (développement / démonstration / production)
-
-- Aucun accès utilisateur direct aux ressources critiques
-
-Les choix techniques sont pensés pour répondre aux contraintes d’environnements professionnels et institutionnels.
-
-🔹 Déploiement
-
-- Version locale pour développement et validation
-
-- Version cloud (Streamlit) pour démonstration contrôlée et production
-
-- Désactivation des écritures locales en environnement cloud
-
-- Architecture compatible avec une montée en charge progressive
+📊 Résultats obtenus
+Automatisation complète du processus de traitement
+Réduction majeure du temps de consolidation
+Suppression de la ressaisie manuelle
+Fiabilisation des indicateurs qualité
+Standardisation des analyses
+Traçabilité complète des transformations
+Support des rapports de plus de 180 pages
+Déploiement opérationnel en environnement institutionnel
 
 ⭐ Points forts du projet
-
-- Automatisation complète de bout en bout
-
-- Architecture modulaire et industrialisable
-
-- Forte fiabilité des données
-
-- Sécurité intégrée dès la conception
-
-- Compatible avec des environnements institutionnels
-
-- Facilement extensible à d’autres formats ou cas d’usage
+Solution de bout en bout
+Architecture modulaire et industrialisable
+Adaptation automatique à la volumétrie documentaire
+Validation stricte des données
+Intégration cloud sécurisée
+Compatible avec des environnements institutionnels
+Facilement extensible à d'autres cas d'usage
 
 👨‍💻 À propos
 
-Ce projet illustre une approche orientée :
+Ce projet illustre une approche combinant :
+Data Engineering
+Automatisation intelligente
+Intelligence Artificielle appliquée
+Qualité et gouvernance des données
+Industrialisation des processus
 
-- Ingénierie des données
-
-- Automatisation intelligente
-
-- Qualité et gouvernance des données
-
-- Industrialisation des processus
-
-Il a été conçu comme un système robuste, destiné à transformer des processus manuels complexes en chaînes de traitement fiables, reproductibles et scalables.
+Il a été conçu pour transformer des processus documentaires complexes en chaînes de traitement fiables, reproductibles et scalables.
 
 ✍️ Auteur
 
-Développé par Roméo Botuli
-
+Roméo Botuli
 Ingénieur Data & Intelligence Artificielle
 
-Projet réalisé dans un contexte institutionnel (CESU 83)
-
-
-
+Projet réalisé dans un contexte institutionnel pour le Centre d'Enseignement des Soins d'Urgence du Var (CESU 83).
