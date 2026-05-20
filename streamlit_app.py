@@ -341,6 +341,19 @@ def _payload_hash(d: dict) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def _safe_filename(value: str) -> str:
+    """
+    Nettoie une chaîne pour créer un nom de fichier compatible Windows/Linux/Streamlit Cloud.
+    Évite notamment les /, \, :, *, ?, guillemets, <, >, |.
+    """
+    value = str(value or "").strip()
+    value = re.sub(r'[\\/:*?"<>|]+', "_", value)
+    value = re.sub(r"\s+", "_", value)
+    value = re.sub(r"_+", "_", value)
+    return value.strip("_")
+
+
+
 # =====================================================
 # 🧩 Interface Streamlit
 # =====================================================
@@ -411,6 +424,21 @@ def build_model_candidates(nom_formation: str, is_large_pdf: bool) -> list[str]:
     return deduped
 
 
+# Dossiers de travail — compatibles local + Streamlit Cloud
+DIR_JSON_V2 = project_root / "json_v2"
+DIR_JSON_EXCEL = project_root / "json_excel"
+
+DIR_JSON_V2.mkdir(parents=True, exist_ok=True)
+DIR_JSON_EXCEL.mkdir(parents=True, exist_ok=True)
+
+
+@st.cache_data(ttl=30)
+def list_json_v2_files():
+    if not DIR_JSON_V2.exists():
+        return []
+    return sorted([p.name for p in DIR_JSON_V2.glob("*.json")])
+
+
 st.subheader("Phase 1 - Analyse du rapport qualité Digiforma")
 
 with st.form("meta_form", clear_on_submit=False):
@@ -423,6 +451,7 @@ with st.form("meta_form", clear_on_submit=False):
         semestre = st.text_input("Semestre", placeholder="ex: S1 2025")
 
     uploaded_pdf = st.file_uploader("Charger le rapport qualité", type=["pdf"])
+
     submitted = st.form_submit_button(
         "Analyser le rapport",
         use_container_width=True,
@@ -461,16 +490,6 @@ if submitted:
                 f"{char_count:,} caractères.\n\n"
                 "Analyse automatique en cours."
             )
-
-    # Aperçu du texte lu masqué en production.
-    # Bloc utile uniquement pour debug développeur :
-    # with st.expander("🔎 Aperçu du texte lu (pré-traitement)", expanded=False):
-    #     st.markdown(f"**OCR utilisé :** {'✅ Oui' if used_ocr else '❌ Non'}")
-    #     st.text_area(
-    #         "Aperçu du texte lu (limité à 20 000 caractères)",
-    #         full_text[:20000],
-    #         height=300,
-    #     )
 
     prompt_path = project_root / "prompts" / "prompt_reference.txt"
 
@@ -518,7 +537,6 @@ if submitted:
             st.exception(last_error)
         st.stop()
 
-    # Message discret, sans exposer le modèle technique à l'utilisateur métier
     st.caption("Traitement finalisé avec le mode d’analyse adapté.")
 
     json_result["Nom formation"] = nom_formation
@@ -534,10 +552,8 @@ if submitted:
         st.exception(e)
         st.stop()
 
-    DIR_JSON_V2 = project_root / "json_v2"
-    DIR_JSON_V2.mkdir(exist_ok=True)
-
-    safe_name = f"{nom_formation.strip().replace(' ', '_')}_{semestre.strip().replace(' ', '_')}.json"
+    # Sécurisation du nom de fichier
+    safe_name = f"{_safe_filename(nom_formation)}_{_safe_filename(semestre)}.json"
 
     payload_dict_full = validated.model_dump(by_alias=True, exclude_none=False)
     payload_dict = validated.model_dump(by_alias=True, exclude_none=True)
@@ -545,17 +561,20 @@ if submitted:
     json_str = json.dumps(payload_dict, ensure_ascii=False, indent=2)
 
     path_v2 = DIR_JSON_V2 / safe_name
+    path_v2.parent.mkdir(parents=True, exist_ok=True)
     path_v2.write_text(json_str, encoding="utf-8")
+
+    # Nettoyage du cache de liste pour rendre le nouveau fichier visible immédiatement en Phase 2
+    try:
+        list_json_v2_files.clear()
+    except Exception:
+        pass
 
     st.success(
         "✅ Analyse du rapport réussie. "
         "Les données ont été extraites avec succès. "
         "Vous pouvez passer à la Phase 2 pour structurer les données."
     )
-
-    # Aperçu JSON masqué en production.
-    # with st.expander("🧾 Aperçu du schéma", expanded=False):
-    #     st.code(json_str, language="json")
 
     def _is_missing_or_empty(x):
         if x is None:
@@ -586,14 +605,6 @@ if submitted:
             for msg in missing_msgs:
                 st.markdown(f"- {msg}")
 
-    # Masqué en prod
-    # st.download_button(
-    #     label="📥 Télécharger le fichier d’analyse",
-    #     data=json_str,
-    #     file_name=safe_name,
-    #     mime="application/json",
-    #     use_container_width=True,
-    # )
 
 st.markdown("---")
 
@@ -604,17 +615,8 @@ st.markdown("---")
 
 st.subheader("Phase 2 - Structuration des données")
 
-DIR_JSON_V2 = project_root / "json_v2"
-DIR_JSON_EXCEL = project_root / "json_excel"
-DIR_JSON_EXCEL.mkdir(exist_ok=True)
-
-
-@st.cache_data(ttl=30)
-def list_json_v2_files():
-    if not DIR_JSON_V2.exists():
-        return []
-    return sorted([p.name for p in DIR_JSON_V2.glob("*.json")])
-
+DIR_JSON_V2.mkdir(parents=True, exist_ok=True)
+DIR_JSON_EXCEL.mkdir(parents=True, exist_ok=True)
 
 files = list_json_v2_files()
 
@@ -668,6 +670,7 @@ else:
             )
 
         path_excel = DIR_JSON_EXCEL / selected
+        path_excel.parent.mkdir(parents=True, exist_ok=True)
         path_excel.write_text(
             json.dumps(json_excel, ensure_ascii=False, indent=2),
             encoding="utf-8",
@@ -679,17 +682,6 @@ else:
             "Vous pouvez passer à la Phase 3."
         )
 
-        # st.download_button(
-        #     "📥 Télécharger le fichier structuré",
-        #     data=json.dumps(json_excel, ensure_ascii=False, indent=2),
-        #     file_name=path_excel.name,
-        #     mime="application/json",
-        #     use_container_width=True,
-        # )
-
-        # Aperçu JSON Excel masqué en production.
-        # with st.expander("Aperçu (json_excel)", expanded=False):
-        #     st.json(json_excel, expanded=False)
 
 st.markdown("---")
 
@@ -701,7 +693,7 @@ st.markdown("---")
 st.subheader("Phase 3 — Intégration dans le suivi qualité")
 
 json_excel_dir = DIR_JSON_EXCEL
-json_excel_dir.mkdir(exist_ok=True)
+json_excel_dir.mkdir(parents=True, exist_ok=True)
 
 colL, colR = st.columns([2, 1])
 
@@ -738,7 +730,6 @@ else:
         except Exception as e:
             st.error(f"Fichier JSON invalide : {e}")
 
-# Aperçu des clés masqué en production.
 if json_payload:
     st.caption("Aperçu des clés du JSON Excel détectées :")
     st.code(", ".join(json_payload.keys()), language="text")
@@ -761,13 +752,10 @@ if inject_gs and json_payload:
     else:
         with st.spinner("Intégration dans le suivi qualité en cours..."):
             try:
-                # La fonction retourne normalement le numéro de ligne insérée
                 row_idx = append_json_to_google_sheet(json_payload)
 
-                # Mémorisation pour éviter les doublons pendant la session
                 st.session_state.injected_hashes.add(h)
 
-                # Message de succès détaillé avec numéro de ligne
                 st.success(
                     "✅ Intégration réussie.\n"
                     "Les données ont été ajoutées au tableau de suivi qualité : "
@@ -775,7 +763,6 @@ if inject_gs and json_payload:
                     f"📍 Ligne d'insertion : {row_idx}"
                 )
 
-                # Information complémentaire
                 st.info(
                     "Vous pouvez retrouver immédiatement cet enregistrement "
                     f"à la ligne {row_idx} du Google Sheet."
