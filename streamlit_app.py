@@ -331,7 +331,7 @@ def map_old_payload_to_v2(json_result: dict, full_text: str) -> dict:
 
     _normalize_satisfaction_labels(out)
     fill_missing_percentages_from_counts(out)
-    out["version_prompt"] = "v2.1"
+    out["version_prompt"] = out.get("version_prompt") or "v2.2"
 
     return out
 

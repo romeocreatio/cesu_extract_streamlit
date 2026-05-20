@@ -403,8 +403,8 @@ def generate_json_excel(
     pre_mo = (v2.get("pre_formation") or {}).get("maitrise_objectifs_preformation") or {}
 
     note_pre = (
-        _mean_notes_sur10(pre_mo.get("par_objectif"))
-        or _format_note(pre_mo.get("note_globale_objectifs_preformation"))
+        _format_note(pre_mo.get("note_globale_objectifs_preformation"))
+        or _mean_notes_sur10(pre_mo.get("par_objectif"))
         or "Données indisponibles"
     )
 
@@ -433,8 +433,8 @@ def generate_json_excel(
     cold_mo = a_froid.get("maitrise_objectifs_a_froid") or {}
 
     auto_prog = (
-        _mean_notes_sur10(cold_mo.get("par_objectif"))
-        or _format_note(cold_mo.get("note_globale_objectifs_a_froid"))
+        _format_note(cold_mo.get("note_globale_objectifs_a_froid"))
+        or _mean_notes_sur10(cold_mo.get("par_objectif"))
         or "Données indisponibles"
     )
 
