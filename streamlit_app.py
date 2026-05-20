@@ -373,6 +373,44 @@ st.markdown("---")
 # Phase 1 — Analyse du rapport qualité
 # =====================================================
 
+def build_model_candidates(nom_formation: str, is_large_pdf: bool) -> list[str]:
+    """
+    Définit l'ordre des modèles à essayer automatiquement.
+    Objectif : éviter de bloquer l'utilisateur final si un modèle échoue.
+    """
+    standard_model = get_secret_value("OPENAI_MODEL", "gpt-4.1-mini")
+    large_model = get_secret_value("OPENAI_MODEL_LARGE", "gpt-4.1-mini-long-context")
+    reliable_model = get_secret_value("OPENAI_MODEL_RELIABLE", "gpt-4.1")
+
+    formation_upper = (nom_formation or "").upper()
+
+    if "AFGSU" in formation_upper:
+        candidates = [
+            reliable_model,
+            large_model,
+            standard_model,
+        ]
+    elif is_large_pdf:
+        candidates = [
+            large_model,
+            reliable_model,
+            standard_model,
+        ]
+    else:
+        candidates = [
+            standard_model,
+            large_model,
+            reliable_model,
+        ]
+
+    deduped = []
+    for model in candidates:
+        if model and model not in deduped:
+            deduped.append(model)
+
+    return deduped
+
+
 st.subheader("Phase 1 - Analyse du rapport qualité Digiforma")
 
 with st.form("meta_form", clear_on_submit=False):
@@ -406,10 +444,10 @@ if submitted:
 
         is_large_pdf = page_count > 80 or char_count > 180000
 
-        if is_large_pdf:
-            model_to_use = get_secret_value("OPENAI_MODEL_LARGE", "gpt-4.1-mini")
-        else:
-            model_to_use = get_secret_value("OPENAI_MODEL", "gpt-4.1-mini")
+        model_candidates = build_model_candidates(
+            nom_formation=nom_formation,
+            is_large_pdf=is_large_pdf,
+        )
 
         if is_large_pdf:
             st.info(
@@ -442,25 +480,46 @@ if submitted:
         st.error(f"Impossible de charger le prompt de référence : {e}")
         st.stop()
 
+    last_error = None
+    json_result = None
+    model_used = None
+
     with st.spinner("Analyse du rapport en cours..."):
-        try:
-            json_result = call_llm_extract_json(
-                prompt_master,
-                full_text,
-                meta={
-                    "nom_formation": nom_formation,
-                    "semestre": semestre,
-                    "filename": uploaded_pdf.name,
-                    "page_count": page_count,
-                    "char_count": char_count,
-                    "is_large_pdf": is_large_pdf,
-                },
-                model_override=model_to_use,
-            )
-        except Exception as e:
-            st.error("Une erreur est survenue pendant l’analyse du rapport.")
-            st.exception(e)
-            st.stop()
+        for model_name in model_candidates:
+            try:
+                json_result = call_llm_extract_json(
+                    prompt_master,
+                    full_text,
+                    meta={
+                        "nom_formation": nom_formation,
+                        "semestre": semestre,
+                        "filename": uploaded_pdf.name,
+                        "page_count": page_count,
+                        "char_count": char_count,
+                        "is_large_pdf": is_large_pdf,
+                        "model_attempted": model_name,
+                    },
+                    model_override=model_name,
+                )
+
+                model_used = model_name
+                break
+
+            except Exception as e:
+                last_error = e
+                continue
+
+    if json_result is None:
+        st.error(
+            "L'analyse du rapport n'a pas pu être finalisée automatiquement. "
+            "Le rapport semble trop complexe ou trop volumineux pour le traitement actuel."
+        )
+        if last_error:
+            st.exception(last_error)
+        st.stop()
+
+    # Message discret, sans exposer le modèle technique à l'utilisateur métier
+    st.caption("Traitement finalisé avec le mode d’analyse adapté.")
 
     json_result["Nom formation"] = nom_formation
     json_result[" semestre"] = semestre
@@ -498,31 +557,35 @@ if submitted:
     # with st.expander("🧾 Aperçu du schéma", expanded=False):
     #     st.code(json_str, language="json")
 
-    # Avertissements techniques masqués en production.
-    # À réactiver uniquement pour debug développeur.
     def _is_missing_or_empty(x):
         if x is None:
-           return True
+            return True
         if isinstance(x, dict) and len(x) == 0:
-           return True
+            return True
         if isinstance(x, list) and len(x) == 0:
-           return True
+            return True
         return False
-    
+
     missing_msgs = []
-    sections_to_check = ["pre_formation", "a_chaud", "a_froid", "intervenants", "resultats_evaluations"]
-    
+    sections_to_check = [
+        "pre_formation",
+        "a_chaud",
+        "a_froid",
+        "intervenants",
+        "resultats_evaluations",
+    ]
+
     for section in sections_to_check:
         val_full = payload_dict_full.get(section)
         if _is_missing_or_empty(val_full):
             kind = "absente (null)" if val_full is None else "présente mais vide"
             missing_msgs.append(f"Section **{section}** {kind}.")
-    
+
     if missing_msgs:
         with st.expander("⚠️ Avertissements — Sections manquantes ou vides", expanded=False):
             for msg in missing_msgs:
                 st.markdown(f"- {msg}")
-    
+
     # Masqué en prod
     # st.download_button(
     #     label="📥 Télécharger le fichier d’analyse",
