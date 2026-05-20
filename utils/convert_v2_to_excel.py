@@ -225,7 +225,7 @@ def _llm_text(prompt: str) -> str:
 
         if isinstance(res, dict):
             for k in (
-                "résumé", "resume", "synthese", "synthèse",
+                "phrase", "résumé", "resume", "synthese", "synthèse",
                 "summary", "text", "content", "result", "output"
             ):
                 v = res.get(k)
@@ -254,7 +254,7 @@ def _unwrap_summary_text(text: str) -> str:
             obj = json.loads(t)
 
             if isinstance(obj, dict):
-                for k in ("résumé", "resume", "synthese", "synthèse", "summary", "text", "content"):
+                for k in ("phrase", "résumé", "resume", "synthese", "synthèse", "summary", "text", "content", "result", "output"):
                     v = obj.get(k)
                     if isinstance(v, str) and v.strip():
                         return v.strip()
@@ -478,8 +478,8 @@ def generate_json_excel(
         "Sujets non traité à reboucler avec formateur ou nouvelle formation ou attendu": sujets_reboucler,
         "Evaluation formateurs": eval_formateurs,
         "Autoanalyse compétence": (
-            _mean_notes_sur10((a_chaud.get("maitrise_objectifs_a_chaud") or {}).get("par_objectif"))
-            or _format_note((a_chaud.get("maitrise_objectifs_a_chaud") or {}).get("note_globale_objectifs_a_chaud"))
+            _format_note((a_chaud.get("maitrise_objectifs_a_chaud") or {}).get("note_globale_objectifs_a_chaud"))
+            or _mean_notes_sur10((a_chaud.get("maitrise_objectifs_a_chaud") or {}).get("par_objectif"))
             or "Données indisponibles"
         ),
         "Note /10 à froid": note_froid,
