@@ -765,8 +765,8 @@ if inject_gs and json_payload:
                 st.session_state.injected_hashes.add(h)
 
                 st.success(
-                    "✅ Intégration réussie. "
-                    "Les données ont été ajoutées au tableau de suivi qualité:"
+                    "✅ Intégration réussie.\n"
+                    "Les données ont été ajoutées au tableau de suivi qualité :\n"
                     "Analyse globale des formations."
                 )
 
