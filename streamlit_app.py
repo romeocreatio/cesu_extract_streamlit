@@ -761,15 +761,28 @@ if inject_gs and json_payload:
     else:
         with st.spinner("Intégration dans le suivi qualité en cours..."):
             try:
+                # La fonction retourne normalement le numéro de ligne insérée
                 row_idx = append_json_to_google_sheet(json_payload)
+
+                # Mémorisation pour éviter les doublons pendant la session
                 st.session_state.injected_hashes.add(h)
 
+                # Message de succès détaillé avec numéro de ligne
                 st.success(
                     "✅ Intégration réussie.\n"
-                    "Les données ont été ajoutées au tableau de suivi qualité :\n"
-                    "Analyse globale des formations."
+                    "Les données ont été ajoutées au tableau de suivi qualité : "
+                    "Analyse globale des formations.\n\n"
+                    f"📍 Ligne d'insertion : {row_idx}"
+                )
+
+                # Information complémentaire
+                st.info(
+                    "Vous pouvez retrouver immédiatement cet enregistrement "
+                    f"à la ligne {row_idx} du Google Sheet."
                 )
 
             except Exception as e:
-                st.error("❌ Une erreur est survenue lors de l’intégration dans Google Sheets.")
+                st.error(
+                    "❌ Une erreur est survenue lors de l’intégration dans Google Sheets."
+                )
                 st.exception(e)
