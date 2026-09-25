@@ -111,13 +111,58 @@ def call_llm_extract_json(prompt_master: str, full_text: str, meta: dict, model_
         temperature=0,
     )
 
-    raw = resp.choices[0].message.content
 
+    # Récupération de la réponse OpenAI
+    choice = resp.choices[0]
+    raw = choice.message.content or ""
+    finish_reason = choice.finish_reason
+
+    # Statistiques de génération
+    tokens_sortie = (
+        resp.usage.completion_tokens
+        if resp.usage is not None
+        else None
+    )
+
+    # Diagnostic dans les logs Streamlit
+    print(
+        f"[CESU-EXTRACT] Modele={model} | "
+        f"Fin={finish_reason} | "
+        f"Tokens_sortie={tokens_sortie} | "
+        f"Caracteres={len(raw)}",
+        flush=True,
+    )
+
+    # Détection d'une réponse interrompue
+    if finish_reason != "stop":
+        raise RuntimeError(
+            f"Réponse OpenAI interrompue : "
+            f"modele={model}, "
+            f"finish_reason={finish_reason}, "
+            f"tokens_sortie={tokens_sortie}"
+        )
+
+    # Validation du JSON
     try:
         data = _coerce_json(raw)
-    except Exception as e:
-        preview = raw[:500] if raw else "VIDE"
-        raise ValueError(f"Réponse LLM non JSON. Début réponse: {preview}") from e
+
+    except ValueError as e:
+        try:
+            json.loads(raw)
+        except json.JSONDecodeError as err:
+            detail = (
+                f"{err.msg}, ligne {err.lineno}, "
+                f"colonne {err.colno}"
+            )
+        else:
+            detail = str(e)
+
+        raise ValueError(
+            f"JSON invalide : modele={model}, "
+            f"tokens_sortie={tokens_sortie}, "
+            f"taille={len(raw)} caracteres. {detail}"
+        ) from e
+
 
     # Nettoyages simples (décimales FR, %)
     def _norm_numbers(obj):
