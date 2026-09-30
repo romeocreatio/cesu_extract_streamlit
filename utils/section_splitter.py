@@ -158,9 +158,12 @@ SECTION_RULES: Tuple[SectionRule, ...] = (
             "ÉVALUATION À CHAUD POUR LES APPRENANTS",
         ),
         signatures=(
+            "Pensez-vous que cette formation vous a été profitable",
+            "Par rapport à l'idée que vous aviez du contenu, vous êtes plutôt",
+            "Y a-t-il des thèmes indispensables qui n'ont pas été traités",
+            "La formation vous a-t-elle apporté des connaissances",
             "L'accueil en formation a été",
             "En début de session, est-ce que le programme et les objectifs de la formation ont été clairement annoncés",
-            "Pensez-vous que cette formation vous a été profitable",
         ),
         min_signatures=2,
     ),
