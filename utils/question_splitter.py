@@ -114,12 +114,18 @@ A_CHAUD_ANCHORS: Tuple[QuestionAnchor, ...] = (
 
     QuestionAnchor(
         key="transfert_pratique",
-        text="Pensez-vous que vous pourrez transférer les acquis de la formation dans votre pratique professionnelle",
+        text=(
+            "Pensez-vous que vous pourrez transférer les acquis de la formation "
+            "dans votre pratique professionnelle"
+        ),
     ),
 
     QuestionAnchor(
         key="elements_mise_en_pratique",
-        text="Quels éléments allez-vous pouvoir mettre en pratique dans votre vie professionnelle",
+        text=(
+            "Quels éléments allez-vous pouvoir mettre en pratique "
+            "dans votre vie professionnelle"
+        ),
     ),
 
     QuestionAnchor(
@@ -159,12 +165,18 @@ A_CHAUD_ANCHORS: Tuple[QuestionAnchor, ...] = (
 
     QuestionAnchor(
         key="appreciation_intervenants",
-        text="En quelques mots, quelles sont les appréciations que vous donneriez sur le-les intervenant-s",
+        text=(
+            "En quelques mots, quelles sont les appréciations "
+            "que vous donneriez sur le-les intervenant-s"
+        ),
     ),
 
     QuestionAnchor(
         key="conditions_materielles",
-        text="Les conditions matérielles et l'organisation de la formation ont été",
+        text=(
+            "Les conditions matérielles et l'organisation "
+            "de la formation ont été"
+        ),
     ),
 
     QuestionAnchor(
@@ -184,7 +196,10 @@ A_CHAUD_ANCHORS: Tuple[QuestionAnchor, ...] = (
 
     QuestionAnchor(
         key="note_impression",
-        text="Donnez une note de 0 à 10 sur l'impression que vous laisse cette formation",
+        text=(
+            "Donnez une note de 0 à 10 sur l'impression "
+            "que vous laisse cette formation"
+        ),
     ),
 
     QuestionAnchor(
@@ -202,12 +217,18 @@ A_FROID_ANCHORS: Tuple[QuestionAnchor, ...] = (
 
     QuestionAnchor(
         key="mise_en_pratique",
-        text="Avez vous pu mettre en pratique les connaissances compétences acquises",
+        text=(
+            "Avez vous pu mettre en pratique les connaissances "
+            "compétences acquises"
+        ),
     ),
 
     QuestionAnchor(
         key="application_concrete",
-        text="L'application concrète des connaissances compétences vous paraît elle",
+        text=(
+            "L'application concrète des connaissances "
+            "compétences vous paraît elle"
+        ),
     ),
 
     QuestionAnchor(
@@ -269,7 +290,10 @@ A_FROID_ANCHORS: Tuple[QuestionAnchor, ...] = (
 
     QuestionAnchor(
         key="elements_utiles",
-        text="Quels sont avec le recul les éléments les plus utiles de la formation",
+        text=(
+            "Quels sont avec le recul les éléments "
+            "les plus utiles de la formation"
+        ),
     ),
 
     QuestionAnchor(
@@ -285,6 +309,185 @@ A_FROID_ANCHORS: Tuple[QuestionAnchor, ...] = (
     QuestionAnchor(
         key="note_finale",
         text="Quelle note sur 10 donneriez vous à cette formation",
+    ),
+)
+
+
+# =====================================================
+# Ancres métier connues — section INTERVENANTS
+# =====================================================
+
+INTERVENANTS_ANCHORS: Tuple[QuestionAnchor, ...] = (
+
+    QuestionAnchor(
+        key="conditions_materielles",
+        text="Les conditions matérielles étaient adaptées",
+    ),
+
+    QuestionAnchor(
+        key="groupe_adapte",
+        text=(
+            "Le groupe d'apprenant était-il adapté "
+            "taille niveau pré-requis"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="organisation_generale",
+        text="L'organisation générale de la formation était-elle adaptée",
+    ),
+
+    QuestionAnchor(
+        key="commentaire_conditions",
+        text="Commentaire sur les conditions matérielles",
+    ),
+
+    QuestionAnchor(
+        key="commentaire_groupe",
+        text="Commentaire sur le groupe d'apprenant",
+    ),
+
+    QuestionAnchor(
+        key="commentaire_organisation",
+        text="Commentaire sur l'organisation générale de la formation",
+    ),
+
+    QuestionAnchor(
+        key="retards",
+        text=(
+            "Avez-vous eu des retards d'apprenant(s) "
+            "au cours de cette session"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="adaptation_horaires",
+        text=(
+            "As-tu eu à adapter les horaires de début fin de formation "
+            "et les pauses aux besoins des apprenants"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="precisions",
+        text="Précisions à noter ici",
+    ),
+
+    QuestionAnchor(
+        key="j7",
+        text=(
+            "As-tu pris connaissance avant formation du questionnaire J-7 "
+            "des attentes des apprenants et de l'auto-évaluation "
+            "de leur compétences"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="synthese_questionnaire",
+        text="As-tu bien noté ta synthèse en haut du questionnaire",
+    ),
+
+    QuestionAnchor(
+        key="tour_table_fait",
+        text=(
+            "Et en début de formation le tour de table pour questionner "
+            "les attentes a-t-il été fait"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="synthese_tour_table",
+        text=(
+            "Quelle est ta synthèse de ce tour de table des attentes "
+            "au regard des objectifs de la formation"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="attentes_individuelles",
+        text=(
+            "Noter ici s'il y a des attentes individuelles spécifiques "
+            "qui ressortent de ce tour de table"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="attentes_programme",
+        text=(
+            "Est-ce que les attentes globales et individuelles "
+            "correspondaient au programme prévu pour la formation"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="modification_element",
+        text=(
+            "As-tu annulé ou modifié un élément pédagogique "
+            "de la formation"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="explication_modification",
+        text=(
+            "Merci d'expliquer quoi pourquoi comment s'est fait cette "
+            "annulation modification adaptation d'une partie du programme"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="contenu_non_prevu",
+        text=(
+            "As-tu traité un contenu non prévu-e au programme suite au "
+            "besoin d'un apprenant ou du groupe ou une question"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="contenu_non_prevu_detail",
+        text="De quoi s'agissait-il",
+    ),
+
+    QuestionAnchor(
+        key="handicap_signale",
+        text=(
+            "Est-ce qu'un(e) apprenant(e) t'a signalé être en situation "
+            "de handicap temporaire"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="adaptation_handicap",
+        text=(
+            "Si oui quelle(s) adaptation(s) lui a tu proposé "
+            "au cours de la formation"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="formation_complementaire",
+        text=(
+            "As-tu eu l'occasion de proposer à un(e) apprenant(e) "
+            "une formation complémentaire pour renforcer certaines compétences"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="formation_conseillee",
+        text=(
+            "Quelle formation as-tu conseillé en complément de celle-ci "
+            "et Pourquoi"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="commentaire_libre",
+        text="Commentaire libre si besoin",
+    ),
+
+    QuestionAnchor(
+        key="satisfaction_globale",
+        text="Quel est ton taux de satisfaction global sur cette formation",
     ),
 )
 
@@ -653,6 +856,37 @@ def split_a_froid_questions(
         result=result,
         section=section,
         anchors=A_FROID_ANCHORS,
+        window_lines=20,
+        prefix_words=3,
+    )
+
+
+# =====================================================
+# Découpage spécifique — section INTERVENANTS
+# =====================================================
+
+def split_intervenants_questions(
+    result: PdfReadResult,
+    section: ReportSection,
+) -> List[AnchoredQuestionBlock]:
+    """
+    Découpe la section INTERVENANTS.
+
+    La section suit un questionnaire métier stable,
+    mais Digiforma peut répartir les intitulés,
+    modalités de réponse et résultats sur plusieurs
+    lignes.
+
+    Réglages validés sur les rapports AFGSU 1 et
+    AFGSU 2 de 2026 :
+        - préfixe de 3 mots ;
+        - fenêtre maximale de 20 lignes.
+    """
+
+    return split_anchored_questions(
+        result=result,
+        section=section,
+        anchors=INTERVENANTS_ANCHORS,
         window_lines=20,
         prefix_words=3,
     )
