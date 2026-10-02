@@ -195,6 +195,101 @@ A_CHAUD_ANCHORS: Tuple[QuestionAnchor, ...] = (
 
 
 # =====================================================
+# Ancres métier connues — section À FROID
+# =====================================================
+
+A_FROID_ANCHORS: Tuple[QuestionAnchor, ...] = (
+
+    QuestionAnchor(
+        key="mise_en_pratique",
+        text="Avez vous pu mettre en pratique les connaissances compétences acquises",
+    ),
+
+    QuestionAnchor(
+        key="application_concrete",
+        text="L'application concrète des connaissances compétences vous paraît elle",
+    ),
+
+    QuestionAnchor(
+        key="maitrise_objectifs",
+        text="À ce jour considérez vous maîtriser les objectifs du programme",
+    ),
+
+    QuestionAnchor(
+        key="partage_collegues",
+        text=(
+            "Avez vous partagé les connaissances acquises lors de la formation "
+            "avec vos collègues ou membres de votre équipe"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="changements_positifs",
+        text=(
+            "Avez vous constaté des changements positifs dans les résultats "
+            "de votre travail depuis la participation à la formation"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="indicateurs_concrets",
+        text=(
+            "Pouvez vous identifier des indicateurs concrets qui démontrent "
+            "l efficacité de la formation sur votre performance ou celle "
+            "de votre équipe"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="utilisation_quotidienne",
+        text=(
+            "Est ce que vous utilisez au quotidien dans votre environnement "
+            "de travail les nouveaux savoirs compétences ou comportements "
+            "acquis lors de la formation"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="exemple_specifique",
+        text=(
+            "Pouvez vous citer un exemple spécifique où vous avez utilisé "
+            "les compétences acquises pendant la formation pour résoudre "
+            "un problème ou améliorer une situation dans votre environnement "
+            "professionnel"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="influence_pratique",
+        text=(
+            "Comment la formation a t elle influencé votre approche ou vos "
+            "méthodes de travail dans votre rôle de professionnel"
+        ),
+    ),
+
+    QuestionAnchor(
+        key="elements_utiles",
+        text="Quels sont avec le recul les éléments les plus utiles de la formation",
+    ),
+
+    QuestionAnchor(
+        key="prolongements",
+        text="Quels pourraient être les prolongements nécessaires à la formation",
+    ),
+
+    QuestionAnchor(
+        key="autres_commentaires",
+        text="Autres commentaires",
+    ),
+
+    QuestionAnchor(
+        key="note_finale",
+        text="Quelle note sur 10 donneriez vous à cette formation",
+    ),
+)
+
+
+# =====================================================
 # Détection d'une question numérotée
 # =====================================================
 
@@ -351,6 +446,7 @@ def _find_anchor_start(
     anchor: QuestionAnchor,
     start_index: int,
     window_lines: int = 4,
+    prefix_words: int = 4,
 ) -> int | None:
     """
     Recherche le début réel d'une ancre à partir
@@ -361,7 +457,16 @@ def _find_anchor_start(
 
     La recherche complète tolère ensuite les éléments
     ajoutés par Digiforma entre les mots, par exemple
-    une note comme 9.8 ou 10.0.
+    une note, un pourcentage ou une modalité de réponse.
+
+    window_lines :
+        nombre de lignes utilisées pour reconstruire
+        le libellé complet.
+
+    prefix_words :
+        nombre maximal de premiers mots utilisés pour
+        confirmer que la ligne candidate correspond bien
+        au début de la question.
     """
 
     expected_normalized = normalize_for_match(
@@ -381,12 +486,8 @@ def _find_anchor_start(
         if not current_words:
             continue
 
-        # On vérifie uniquement le début de la ligne.
-        # Les nombres éventuellement insérés plus loin
-        # par Digiforma ne doivent pas empêcher
-        # la reconnaissance de la question.
         prefix_length = min(
-            4,
+            prefix_words,
             len(current_words),
             len(expected_words),
         )
@@ -410,9 +511,6 @@ def _find_anchor_start(
             for record in records[index:end_index]
         )
 
-        # Validation complète de l'ancre :
-        # les mots doivent apparaître dans le bon ordre,
-        # même si Digiforma intercale des scores.
         if contains_tokens_in_order(
             window_text,
             anchor.text,
@@ -421,14 +519,17 @@ def _find_anchor_start(
 
     return None
 
+
 # =====================================================
-# Découpage par ancres métier
+# Découpage générique par ancres métier
 # =====================================================
 
 def split_anchored_questions(
     result: PdfReadResult,
     section: ReportSection,
     anchors: Tuple[QuestionAnchor, ...] = A_CHAUD_ANCHORS,
+    window_lines: int = 4,
+    prefix_words: int = 4,
 ) -> List[AnchoredQuestionBlock]:
     """
     Découpe une section dont les questions ne sont pas
@@ -438,6 +539,10 @@ def split_anchored_questions(
 
     Une ancre absente n'empêche pas la recherche
     des suivantes.
+
+    Les paramètres window_lines et prefix_words permettent
+    d'adapter la détection aux différentes mises en page
+    produites par Digiforma.
     """
 
     records = _section_lines(
@@ -455,6 +560,8 @@ def split_anchored_questions(
             records=records,
             anchor=anchor,
             start_index=search_from,
+            window_lines=window_lines,
+            prefix_words=prefix_words,
         )
 
         if index is None:
@@ -514,3 +621,38 @@ def split_anchored_questions(
         )
 
     return blocks
+
+
+# =====================================================
+# Découpage spécifique — section À FROID
+# =====================================================
+
+def split_a_froid_questions(
+    result: PdfReadResult,
+    section: ReportSection,
+) -> List[AnchoredQuestionBlock]:
+    """
+    Découpe la section À FROID.
+
+    Digiforma peut mélanger dans le texte extrait :
+    - le libellé de la question ;
+    - les modalités de réponse ;
+    - les scores ;
+    - les pourcentages.
+
+    Certaines questions sont donc réparties sur de
+    nombreuses lignes.
+
+    Réglages validés sur les rapports AFGSU 1 et
+    AFGSU 2 de 2026 :
+        - préfixe de 3 mots ;
+        - fenêtre maximale de 20 lignes.
+    """
+
+    return split_anchored_questions(
+        result=result,
+        section=section,
+        anchors=A_FROID_ANCHORS,
+        window_lines=20,
+        prefix_words=3,
+    )
