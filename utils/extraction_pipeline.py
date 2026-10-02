@@ -481,3 +481,70 @@ def build_extraction_plan(
             detection.missing_sections
         ),
     )
+
+# =====================================================
+# Construction des chunks prêts pour extraction
+# =====================================================
+
+def build_extraction_chunks(
+    result: PdfReadResult,
+    max_segment_chars: int = DEFAULT_MAX_SEGMENT_CHARS,
+    target_chunk_chars: int = 8_000,
+    overlap_chars: int = 1_500,
+):
+    """
+    Construit la chaîne déterministe complète jusqu'aux
+    chunks prêts pour une future extraction LLM.
+
+    Étapes :
+        1. détection des sections ;
+        2. routage des questions ;
+        3. construction du plan d'extraction ;
+        4. détection des segments trop volumineux ;
+        5. sous-découpage sûr avec chevauchement.
+
+    Aucun appel OpenAI n'est effectué.
+
+    L'import du chunker est volontairement local afin
+    d'éviter une dépendance circulaire entre les modules.
+    """
+
+    from utils.segment_chunker import (
+        chunk_extraction_segments,
+    )
+
+    if target_chunk_chars <= 0:
+        raise ValueError(
+            "target_chunk_chars doit être "
+            "strictement supérieur à 0."
+        )
+
+    if overlap_chars < 0:
+        raise ValueError(
+            "overlap_chars ne peut pas être négatif."
+        )
+
+    if overlap_chars >= target_chunk_chars:
+        raise ValueError(
+            "overlap_chars doit être strictement "
+            "inférieur à target_chunk_chars."
+        )
+
+    if target_chunk_chars > max_segment_chars:
+        raise ValueError(
+            "target_chunk_chars ne peut pas dépasser "
+            "max_segment_chars."
+        )
+
+    plan = build_extraction_plan(
+        result=result,
+        max_segment_chars=max_segment_chars,
+    )
+
+    chunks = chunk_extraction_segments(
+        segments=plan.segments,
+        target_chunk_chars=target_chunk_chars,
+        overlap_chars=overlap_chars,
+    )
+
+    return plan, chunks
