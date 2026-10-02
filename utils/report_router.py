@@ -8,7 +8,9 @@ from utils.section_splitter import ReportSection
 from utils.question_splitter import (
     AnchoredQuestionBlock,
     QuestionBlock,
+    split_a_froid_questions,
     split_anchored_questions,
+    split_intervenants_questions,
     split_numbered_questions,
 )
 
@@ -105,7 +107,7 @@ def _is_reliable_numbered_structure(
         return False
 
     # Un questionnaire numéroté doit commencer assez tôt.
-    # Cela évite qu'un "18. ..." isolé au milieu d'un rapport
+    # Cela évite qu'un numéro isolé au milieu d'un rapport
     # soit interprété comme une structure de questionnaire.
     if numbers[0] > 3:
         return False
@@ -114,7 +116,7 @@ def _is_reliable_numbered_structure(
 
 
 # =====================================================
-# Routage automatique de la section À CHAUD
+# Routage — section À CHAUD
 # =====================================================
 
 def route_a_chaud_questions(
@@ -166,5 +168,121 @@ def route_a_chaud_questions(
         strategy="none",
         blocks=[],
         numbered_count=len(numbered_blocks),
+        anchored_count=0,
+    )
+
+
+# =====================================================
+# Routage — section À FROID
+# =====================================================
+
+def route_a_froid_questions(
+    result: PdfReadResult,
+    section: ReportSection,
+) -> SectionRoutingResult:
+    """
+    Route une section À FROID vers son découpage
+    spécialisé par ancres métier.
+    """
+
+    anchored_blocks = split_a_froid_questions(
+        result=result,
+        section=section,
+    )
+
+    if anchored_blocks:
+        return SectionRoutingResult(
+            strategy="anchored",
+            blocks=list(anchored_blocks),
+            numbered_count=0,
+            anchored_count=len(anchored_blocks),
+        )
+
+    return SectionRoutingResult(
+        strategy="none",
+        blocks=[],
+        numbered_count=0,
+        anchored_count=0,
+    )
+
+
+# =====================================================
+# Routage — section INTERVENANTS
+# =====================================================
+
+def route_intervenants_questions(
+    result: PdfReadResult,
+    section: ReportSection,
+) -> SectionRoutingResult:
+    """
+    Route une section INTERVENANTS vers son découpage
+    spécialisé par ancres métier.
+    """
+
+    anchored_blocks = split_intervenants_questions(
+        result=result,
+        section=section,
+    )
+
+    if anchored_blocks:
+        return SectionRoutingResult(
+            strategy="anchored",
+            blocks=list(anchored_blocks),
+            numbered_count=0,
+            anchored_count=len(anchored_blocks),
+        )
+
+    return SectionRoutingResult(
+        strategy="none",
+        blocks=[],
+        numbered_count=0,
+        anchored_count=0,
+    )
+
+
+# =====================================================
+# Point d'entrée unique
+# =====================================================
+
+def route_section_questions(
+    result: PdfReadResult,
+    section: ReportSection,
+) -> SectionRoutingResult:
+    """
+    Point d'entrée unique pour choisir automatiquement
+    la stratégie de découpage d'une section détectée.
+
+    Sections actuellement prises en charge :
+        - a_chaud
+        - a_froid
+        - intervenants
+
+    La section pre_formation reste volontairement
+    non routée tant que sa logique métier concernant
+    les occurrences répétées n'est pas définie.
+    """
+
+    if section.key == "a_chaud":
+        return route_a_chaud_questions(
+            result=result,
+            section=section,
+        )
+
+    if section.key == "a_froid":
+        return route_a_froid_questions(
+            result=result,
+            section=section,
+        )
+
+    if section.key == "intervenants":
+        return route_intervenants_questions(
+            result=result,
+            section=section,
+        )
+
+    return SectionRoutingResult(
+        strategy="none",
+        blocks=[],
+        numbered_count=0,
         anchored_count=0,
     )
