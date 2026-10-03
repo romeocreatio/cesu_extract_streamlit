@@ -54,6 +54,14 @@ class AnchoredQuestionBlock:
     """
     Bloc correspondant à une question reconnue
     grâce à son libellé métier.
+
+    occurrence_index permet de distinguer plusieurs
+    occurrences légitimes d'une même question dans
+    une même section.
+
+    Exemple :
+        maitrise_objectifs occurrence 1
+        maitrise_objectifs occurrence 2
     """
 
     key: str
@@ -61,6 +69,7 @@ class AnchoredQuestionBlock:
     start_page: int
     end_page: int
     text: str
+    occurrence_index: int = 1
 
     @property
     def page_count(self) -> int:
@@ -723,6 +732,50 @@ def _find_anchor_start(
     return None
 
 
+def _find_all_anchor_starts(
+    records: List[_LineRecord],
+    anchor: QuestionAnchor,
+    start_index: int = 0,
+    window_lines: int = 4,
+    prefix_words: int = 4,
+) -> List[int]:
+    """
+    Recherche toutes les occurrences d'une même ancre
+    dans une section.
+
+    Contrairement à _find_anchor_start(), cette fonction
+    ne s'arrête pas à la première occurrence.
+
+    Aucun numéro de page n'est utilisé comme critère
+    de détection.
+    """
+
+    starts: List[int] = []
+
+    search_from = start_index
+
+    while search_from < len(records):
+
+        index = _find_anchor_start(
+            records=records,
+            anchor=anchor,
+            start_index=search_from,
+            window_lines=window_lines,
+            prefix_words=prefix_words,
+        )
+
+        if index is None:
+            break
+
+        starts.append(index)
+
+        # Progression obligatoire pour éviter
+        # de retrouver indéfiniment la même occurrence.
+        search_from = index + 1
+
+    return starts
+
+
 # =====================================================
 # Découpage générique par ancres métier
 # =====================================================
@@ -743,9 +796,14 @@ def split_anchored_questions(
     Une ancre absente n'empêche pas la recherche
     des suivantes.
 
-    Les paramètres window_lines et prefix_words permettent
-    d'adapter la détection aux différentes mises en page
-    produites par Digiforma.
+    Cette fonction conserve le comportement historique :
+    au maximum une occurrence par ancre.
+
+    Elle reste utilisée temporairement par le pipeline
+    existant afin de ne pas provoquer de régression.
+
+    Pour conserver toutes les occurrences, utiliser
+    split_all_anchored_questions().
     """
 
     records = _section_lines(
@@ -820,6 +878,170 @@ def split_anchored_questions(
                 start_page=start_page,
                 end_page=end_page,
                 text=text,
+                occurrence_index=1,
+            )
+        )
+
+    return blocks
+
+
+# =====================================================
+# Découpage multi-occurrences par ancres métier
+# =====================================================
+
+def split_all_anchored_questions(
+    result: PdfReadResult,
+    section: ReportSection,
+    anchors: Tuple[QuestionAnchor, ...] = A_CHAUD_ANCHORS,
+    window_lines: int = 4,
+    prefix_words: int = 4,
+) -> List[AnchoredQuestionBlock]:
+    """
+    Découpe une section en conservant toutes les
+    occurrences reconnues des ancres métier.
+
+    Différence avec split_anchored_questions() :
+
+    - l'ancienne fonction cherche les ancres dans
+      l'ordre métier et conserve au maximum une
+      occurrence de chaque ancre ;
+
+    - cette fonction recherche toutes les occurrences
+      de toutes les ancres, puis les remet dans
+      l'ordre réel du PDF.
+
+    Aucun numéro de page fixe n'est utilisé.
+
+    Cette fonction n'est pas encore branchée au routeur
+    principal : elle peut donc être testée sans modifier
+    le comportement actuel du pipeline.
+    """
+
+    records = _section_lines(
+        result=result,
+        section=section,
+    )
+
+    starts = []
+
+    # Recherche indépendante de chaque ancre dans
+    # l'ensemble de la section.
+    for anchor in anchors:
+
+        indexes = _find_all_anchor_starts(
+            records=records,
+            anchor=anchor,
+            start_index=0,
+            window_lines=window_lines,
+            prefix_words=prefix_words,
+        )
+
+        for index in indexes:
+
+            starts.append(
+                (
+                    index,
+                    anchor,
+                    records[index].page_number,
+                )
+            )
+
+    if not starts:
+        return []
+
+    # L'ordre métier des ancres ne doit pas imposer
+    # l'ordre du PDF.
+    starts.sort(
+        key=lambda item: item[0]
+    )
+
+    # Protection contre une ambiguïté :
+    # deux ancres différentes ne doivent normalement
+    # pas commencer exactement sur la même ligne.
+    for position in range(1, len(starts)):
+
+        previous = starts[position - 1]
+        current = starts[position]
+
+        if (
+            previous[0] == current[0]
+            and previous[1].key != current[1].key
+        ):
+            raise ValueError(
+                "Deux ancres différentes ont été "
+                "détectées au même emplacement : "
+                f"{previous[1].key!r} et "
+                f"{current[1].key!r}."
+            )
+
+    # Protection supplémentaire contre un doublon
+    # exact de détection.
+    unique_starts = []
+    seen = set()
+
+    for item in starts:
+
+        signature = (
+            item[0],
+            item[1].key,
+        )
+
+        if signature in seen:
+            continue
+
+        seen.add(signature)
+        unique_starts.append(item)
+
+    occurrence_counts: dict[str, int] = {}
+
+    blocks: List[AnchoredQuestionBlock] = []
+
+    for position, (
+        start_index,
+        anchor,
+        start_page,
+    ) in enumerate(unique_starts):
+
+        if position + 1 < len(unique_starts):
+            end_index = unique_starts[position + 1][0]
+        else:
+            end_index = len(records)
+
+        block_records = records[
+            start_index:end_index
+        ]
+
+        text = "\n".join(
+            record.text
+            for record in block_records
+        ).strip()
+
+        end_page = (
+            block_records[-1].page_number
+            if block_records
+            else start_page
+        )
+
+        occurrence_index = (
+            occurrence_counts.get(
+                anchor.key,
+                0,
+            )
+            + 1
+        )
+
+        occurrence_counts[
+            anchor.key
+        ] = occurrence_index
+
+        blocks.append(
+            AnchoredQuestionBlock(
+                key=anchor.key,
+                title=anchor.text,
+                start_page=start_page,
+                end_page=end_page,
+                text=text,
+                occurrence_index=occurrence_index,
             )
         )
 
@@ -850,6 +1072,9 @@ def split_a_froid_questions(
     AFGSU 2 de 2026 :
         - préfixe de 3 mots ;
         - fenêtre maximale de 20 lignes.
+
+    Pour l'instant cette fonction conserve le
+    comportement historique.
     """
 
     return split_anchored_questions(
@@ -881,6 +1106,9 @@ def split_intervenants_questions(
     AFGSU 2 de 2026 :
         - préfixe de 3 mots ;
         - fenêtre maximale de 20 lignes.
+
+    Pour l'instant cette fonction conserve le
+    comportement historique.
     """
 
     return split_anchored_questions(
