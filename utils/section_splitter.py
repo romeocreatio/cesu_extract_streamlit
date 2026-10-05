@@ -89,6 +89,7 @@ def normalize_for_match(text: str) -> str:
 
     return text.strip()
 
+
 def contains_tokens_in_order(
     text: str,
     expected: str,
@@ -129,7 +130,6 @@ def contains_tokens_in_order(
     return False
 
 
-
 # =====================================================
 # Règles métier 2026
 # =====================================================
@@ -163,7 +163,11 @@ SECTION_RULES: Tuple[SectionRule, ...] = (
             "Y a-t-il des thèmes indispensables qui n'ont pas été traités",
             "La formation vous a-t-elle apporté des connaissances",
             "L'accueil en formation a été",
-            "En début de session, est-ce que le programme et les objectifs de la formation ont été clairement annoncés",
+            (
+                "En début de session, est-ce que le programme "
+                "et les objectifs de la formation ont été "
+                "clairement annoncés"
+            ),
         ),
         min_signatures=2,
     ),
@@ -175,7 +179,10 @@ SECTION_RULES: Tuple[SectionRule, ...] = (
             "ÉVALUATION À FROID POUR LES APPRENANTS",
         ),
         signatures=(
-            "Avez vous pu mettre en pratique les connaissances compétences acquises",
+            (
+                "Avez vous pu mettre en pratique les "
+                "connaissances compétences acquises"
+            ),
         ),
         min_signatures=1,
     ),
@@ -189,7 +196,10 @@ SECTION_RULES: Tuple[SectionRule, ...] = (
         signatures=(
             "Les conditions matérielles étaient adaptées",
             "Le groupe d'apprenant était-il adapté",
-            "L'organisation générale de la formation était-elle adaptée",
+            (
+                "L'organisation générale de la formation "
+                "était-elle adaptée"
+            ),
         ),
         min_signatures=2,
     ),
@@ -197,7 +207,152 @@ SECTION_RULES: Tuple[SectionRule, ...] = (
 
 
 # =====================================================
-# Recherche d'un début de section
+# Helpers titres de sections
+# =====================================================
+
+def _normalized_rule_titles(
+    rule: SectionRule,
+) -> Tuple[str, ...]:
+    """
+    Retourne les titres normalisés d'une règle.
+    """
+
+    return tuple(
+        normalize_for_match(title)
+        for title in rule.titles
+    )
+
+
+def _page_contains_rule_title(
+    page_text: str,
+    rule: SectionRule,
+) -> bool:
+    """
+    Vérifie si une page contient un des titres
+    associés à une section.
+
+    Deux méthodes sont utilisées :
+
+    1. recherche directe du titre normalisé ;
+    2. recherche des mots du titre dans le bon ordre.
+
+    La seconde méthode permet de tolérer les valeurs
+    ajoutées par Digiforma au milieu d'un titre.
+
+    Exemple :
+
+        ÉVALUATION PRÉFORMATION POUR LES 6.5
+        / 10
+        APPRENANTS
+
+    doit tout de même correspondre à :
+
+        ÉVALUATION PRÉFORMATION POUR LES APPRENANTS
+    """
+
+    normalized_page = normalize_for_match(
+        page_text
+    )
+
+    for title in rule.titles:
+
+        normalized_title = normalize_for_match(
+            title
+        )
+
+        # Cas simple : titre présent tel quel.
+        if normalized_title in normalized_page:
+            return True
+
+        # Cas Digiforma : score ou autre élément
+        # inséré entre les mots du titre.
+        if contains_tokens_in_order(
+            page_text,
+            title,
+        ):
+            return True
+
+    return False
+
+def _count_section_titles_on_page(
+    page_text: str,
+) -> int:
+    """
+    Compte le nombre de sections différentes dont
+    le titre apparaît sur une page.
+
+    Une page de synthèse Digiforma contient souvent
+    plusieurs titres de sections :
+
+        ÉVALUATION PRÉFORMATION
+        ÉVALUATION À CHAUD
+        ÉVALUATION À FROID
+        QUESTIONNAIRE INTERVENANTS
+
+    Elle ne doit pas être interprétée comme le début
+    réel d'une de ces sections.
+    """
+
+    count = 0
+
+    for rule in SECTION_RULES:
+
+        if _page_contains_rule_title(
+            page_text=page_text,
+            rule=rule,
+        ):
+            count += 1
+
+    return count
+
+
+def _is_summary_like_page(
+    page_text: str,
+) -> bool:
+    """
+    Considère une page comme une page de synthèse
+    lorsqu'elle contient les titres d'au moins
+    deux sections différentes.
+
+    Cette règle est volontairement conservatrice.
+    """
+
+    return (
+        _count_section_titles_on_page(
+            page_text
+        )
+        >= 2
+    )
+
+
+def _find_title_candidate_indexes(
+    result: PdfReadResult,
+    rule: SectionRule,
+) -> List[int]:
+    """
+    Retourne tous les index de pages contenant
+    le titre d'une section.
+
+    Les index retournés sont basés sur 0.
+    """
+
+    candidates: List[int] = []
+
+    for page_index, page in enumerate(
+        result.pages
+    ):
+
+        if _page_contains_rule_title(
+            page_text=page.text,
+            rule=rule,
+        ):
+            candidates.append(page_index)
+
+    return candidates
+
+
+# =====================================================
+# Fenêtre de confirmation
 # =====================================================
 
 def _build_confirmation_window(
@@ -221,49 +376,138 @@ def _build_confirmation_window(
 
     texts = [
         result.pages[index].text
-        for index in range(page_index, last_index + 1)
+        for index in range(
+            page_index,
+            last_index + 1,
+        )
     ]
 
     return "\n".join(texts)
 
+
+def _match_rule_signatures(
+    text: str,
+    rule: SectionRule,
+) -> List[str]:
+    """
+    Retourne les signatures métier reconnues
+    dans un texte.
+
+    Le texte original n'est jamais modifié.
+    """
+
+    matched: List[str] = []
+
+    for signature in rule.signatures:
+
+        if contains_tokens_in_order(
+            text,
+            signature,
+        ):
+            matched.append(signature)
+
+    return matched
+
+
+# =====================================================
+# Confirmation structurelle d'un titre
+# =====================================================
+
+def _has_earlier_summary_occurrence(
+    result: PdfReadResult,
+    rule: SectionRule,
+    candidate_index: int,
+    title_candidate_indexes: List[int],
+) -> bool:
+    """
+    Vérifie si le même titre de section est déjà apparu
+    auparavant sur une page ressemblant à une synthèse.
+
+    Exemple Hemoc-DIV :
+
+        page 1 :
+            synthèse avec plusieurs titres de sections
+
+        page 3 :
+            vrai début de la préformation
+
+    La présence du titre dans la synthèse puis une
+    seconde fois sur une page dédiée constitue un
+    signal structurel fort.
+
+    Cette règle ne dépend ni du nom de la formation
+    ni d'un numéro de page fixe.
+    """
+
+    for previous_index in title_candidate_indexes:
+
+        if previous_index >= candidate_index:
+            break
+
+        if _is_summary_like_page(
+            result.pages[
+                previous_index
+            ].text
+        ):
+            return True
+
+    return False
+
+
+# =====================================================
+# Recherche d'un début de section
+# =====================================================
 
 def _find_section_start(
     result: PdfReadResult,
     rule: SectionRule,
 ) -> Optional[Tuple[int, List[str]]]:
     """
-    Cherche le premier titre candidat qui possède aussi
-    suffisamment de signatures caractéristiques.
+    Cherche le début réel d'une section.
 
-    Retour :
-        (numéro_de_page, signatures_trouvées)
+    Deux niveaux de validation sont utilisés.
 
-    ou None si aucune section fiable n'est détectée.
+    Niveau 1 — confirmation métier
+        Le titre est présent sur une page non synthétique
+        et suffisamment de signatures métier sont trouvées
+        sur cette page ou la suivante.
+
+    Niveau 2 — confirmation structurelle
+        Si les signatures classiques sont absentes ou trop
+        éloignées, le titre peut tout de même être validé
+        lorsqu'il réapparaît après une occurrence du même
+        titre sur une page de synthèse.
+
+    Le niveau 2 permet notamment de gérer des questionnaires
+    2026 dont la structure diffère du questionnaire classique,
+    sans coder de règle spécifique à une formation.
     """
 
-    normalized_titles = [
-        normalize_for_match(title)
-        for title in rule.titles
-    ]
-
-    normalized_signatures = [
-        (
-            signature,
-            normalize_for_match(signature),
+    title_candidate_indexes = (
+        _find_title_candidate_indexes(
+            result=result,
+            rule=rule,
         )
-        for signature in rule.signatures
-    ]
+    )
 
-    for page_index, page in enumerate(result.pages):
+    if not title_candidate_indexes:
+        return None
 
-        normalized_page = normalize_for_match(page.text)
+    # -------------------------------------------------
+    # 1. Confirmation métier classique
+    # -------------------------------------------------
 
-        title_found = any(
-            title in normalized_page
-            for title in normalized_titles
-        )
+    for page_index in title_candidate_indexes:
 
-        if not title_found:
+        page = result.pages[
+            page_index
+        ]
+
+        # Une page regroupant plusieurs titres de
+        # sections est considérée comme une synthèse.
+        if _is_summary_like_page(
+            page.text
+        ):
             continue
 
         window_text = _build_confirmation_window(
@@ -272,19 +516,78 @@ def _find_section_start(
             lookahead_pages=1,
         )
 
-        normalized_window = normalize_for_match(window_text)
-
-        matched_signatures = [
-            original_signature
-            for original_signature, _ in normalized_signatures
-            if contains_tokens_in_order(
-                normalized_window,
-                original_signature,
+        matched_signatures = (
+            _match_rule_signatures(
+                text=window_text,
+                rule=rule,
             )
+        )
+
+        if (
+            len(matched_signatures)
+            >= rule.min_signatures
+        ):
+            return (
+                page.number,
+                matched_signatures,
+            )
+
+    # -------------------------------------------------
+    # 2. Confirmation structurelle
+    # -------------------------------------------------
+    #
+    # Certaines formations n'utilisent pas immédiatement
+    # les questions classiques après le titre.
+    #
+    # On accepte alors un titre non synthétique seulement
+    # si le même titre est déjà apparu auparavant sur une
+    # vraie page de synthèse.
+    #
+    # Cela évite de simplement accepter n'importe quelle
+    # occurrence isolée du titre.
+    # -------------------------------------------------
+
+    for page_index in title_candidate_indexes:
+
+        page = result.pages[
+            page_index
         ]
 
-        if len(matched_signatures) >= rule.min_signatures:
-            return page.number, matched_signatures
+        if _is_summary_like_page(
+            page.text
+        ):
+            continue
+
+        if not _has_earlier_summary_occurrence(
+            result=result,
+            rule=rule,
+            candidate_index=page_index,
+            title_candidate_indexes=(
+                title_candidate_indexes
+            ),
+        ):
+            continue
+
+        # On conserve les éventuelles signatures déjà
+        # présentes, même si leur nombre est inférieur
+        # au seuil classique.
+        window_text = _build_confirmation_window(
+            result=result,
+            page_index=page_index,
+            lookahead_pages=1,
+        )
+
+        matched_signatures = (
+            _match_rule_signatures(
+                text=window_text,
+                rule=rule,
+            )
+        )
+
+        return (
+            page.number,
+            matched_signatures,
+        )
 
     return None
 
@@ -300,12 +603,18 @@ def detect_sections(
     Détecte les grandes sections du rapport.
 
     Étapes :
-    1. recherche indépendante de chaque section ;
-    2. validation de leur ordre logique ;
-    3. calcul automatique de leur page de fin.
+        1. recherche indépendante de chaque section ;
+        2. exclusion des pages de synthèse ;
+        3. validation métier ou structurelle ;
+        4. validation de l'ordre logique ;
+        5. calcul automatique des pages de fin.
     """
 
-    starts: Dict[str, Tuple[int, List[str]]] = {}
+    starts: Dict[
+        str,
+        Tuple[int, List[str]],
+    ] = {}
+
     missing_sections: List[str] = []
 
     # ---------------------------------------------
@@ -320,9 +629,13 @@ def detect_sections(
         )
 
         if match is None:
-            missing_sections.append(rule.key)
+            missing_sections.append(
+                rule.key
+            )
         else:
-            starts[rule.key] = match
+            starts[
+                rule.key
+            ] = match
 
     # ---------------------------------------------
     # 2. Contrôle de l'ordre logique
@@ -335,7 +648,9 @@ def detect_sections(
         if rule.key not in starts:
             continue
 
-        start_page, _ = starts[rule.key]
+        start_page, _ = starts[
+            rule.key
+        ]
 
         if start_page <= previous_start:
             raise ValueError(
@@ -355,29 +670,60 @@ def detect_sections(
         if rule.key in starts
     ]
 
-    sections: Dict[str, ReportSection] = {}
+    sections: Dict[
+        str,
+        ReportSection,
+    ] = {}
 
-    for index, rule in enumerate(detected_rules):
+    for index, rule in enumerate(
+        detected_rules
+    ):
 
-        start_page, matched_signatures = starts[rule.key]
+        start_page, matched_signatures = (
+            starts[
+                rule.key
+            ]
+        )
 
-        if index + 1 < len(detected_rules):
-            next_rule = detected_rules[index + 1]
-            next_start_page, _ = starts[next_rule.key]
+        if index + 1 < len(
+            detected_rules
+        ):
+            next_rule = (
+                detected_rules[
+                    index + 1
+                ]
+            )
 
-            end_page = next_start_page - 1
+            next_start_page, _ = (
+                starts[
+                    next_rule.key
+                ]
+            )
+
+            end_page = (
+                next_start_page - 1
+            )
+
         else:
-            end_page = result.page_count
+            end_page = (
+                result.page_count
+            )
 
-        sections[rule.key] = ReportSection(
+        sections[
+            rule.key
+        ] = ReportSection(
             key=rule.key,
             label=rule.label,
             start_page=start_page,
             end_page=end_page,
-            matched_signatures=matched_signatures,
+            matched_signatures=(
+                matched_signatures
+            ),
         )
 
     return SectionDetectionResult(
         sections=sections,
-        missing_sections=missing_sections,
+        missing_sections=(
+            missing_sections
+        ),
     )
