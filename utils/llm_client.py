@@ -164,15 +164,51 @@ def call_llm_extract_json(prompt_master: str, full_text: str, meta: dict, model_
         ) from e
 
 
-    # Nettoyages simples (décimales FR, %)
+    # Nettoyage conservateur des chaînes :
+    # ne jamais modifier la ponctuation du texte libre.
+    # Seules les chaînes entièrement numériques avec
+    # une virgule décimale sont normalisées.
+    def _normalize_string(value: str) -> str:
+        stripped = value.strip()
+
+        numeric_part = stripped
+        suffix = ""
+
+        if numeric_part.endswith("%"):
+            numeric_part = numeric_part[:-1].strip()
+            suffix = "%"
+
+        if numeric_part.count(",") != 1:
+            return value
+
+        integer_part, decimal_part = numeric_part.split(",", 1)
+
+        signed_integer = (
+            integer_part[1:]
+            if integer_part.startswith(("+", "-"))
+            else integer_part
+        )
+
+        if (
+            signed_integer.isdigit()
+            and decimal_part.isdigit()
+        ):
+            return (
+                integer_part
+                + "."
+                + decimal_part
+                + suffix
+            )
+
+        return value
+
     def _norm_numbers(obj):
         if isinstance(obj, dict):
             return {k: _norm_numbers(v) for k, v in obj.items()}
         if isinstance(obj, list):
             return [_norm_numbers(x) for x in obj]
         if isinstance(obj, str):
-            s = obj.replace(",", ".").strip()
-            return s
+            return _normalize_string(obj)
         return obj
 
     return _norm_numbers(data)
