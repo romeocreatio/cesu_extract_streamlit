@@ -1,0 +1,512 @@
+﻿# utils/question_extraction_contracts.py
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+import math
+from typing import (
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+)
+
+from utils.question_registry import DataKind
+
+
+# =====================================================
+# Types communs
+# =====================================================
+
+Number = Union[int, float]
+
+ScaleLevel = Literal[
+    1,
+    2,
+    3,
+    4,
+    5,
+]
+
+MasteryMode = Literal[
+    "4_niveaux",
+    "notes_sur_10",
+]
+
+
+# =====================================================
+# Distribution 1 -> 5
+# =====================================================
+
+@dataclass(frozen=True)
+class Distribution1To5Level:
+    """
+    Une modalité de réponse de l'échelle 1 à 5.
+
+    nb_votants et pourcentage peuvent être absents
+    lorsque la source ne permet pas de les déterminer.
+    """
+
+    level: ScaleLevel
+    nb_votants: Optional[Number]
+    pourcentage: Optional[Number]
+
+
+@dataclass(frozen=True)
+class Distribution1To5Result:
+    """
+    Résultat interne pour data_kind=distribution_1_5.
+
+    Le futur adaptateur JSON 2026 pourra produire :
+    - volonte_suivi_formation
+    - souhaitez_vous_suivre_distribution
+
+    sans demander au LLM de connaître les colonnes
+    ou chemins de sortie.
+    """
+
+    nb_votants: Optional[Number]
+
+    levels: Tuple[
+        Distribution1To5Level,
+        ...
+    ]
+
+
+# =====================================================
+# Verbatims
+# =====================================================
+
+@dataclass(frozen=True)
+class VerbatimsResult:
+    """
+    Verbatims extraits exactement de la source.
+
+    Aucun résumé ni reformulation ne doit être fait.
+    Le dédoublonnage lié au chevauchement des chunks
+    sera traité plus tard lors de la consolidation.
+    """
+
+    items: Tuple[str, ...]
+
+
+# =====================================================
+# Maîtrise des objectifs
+# =====================================================
+
+@dataclass(frozen=True)
+class MasteryLevels:
+    """
+    Valeurs numériques présentes pour les quatre
+    niveaux possibles d'auto-évaluation.
+
+    Le contrat ne suppose pas ici s'il s'agit de
+    nombres de répondants ou d'une autre valeur
+    numérique déjà présente dans la source.
+    """
+
+    totalement: Optional[Number]
+    en_partie: Optional[Number]
+    insuffisamment: Optional[Number]
+    pas_du_tout: Optional[Number]
+
+
+@dataclass(frozen=True)
+class MasteryObjectiveResult:
+    """
+    Résultat pour un objectif individuel.
+    """
+
+    objectif_label: str
+
+    levels: MasteryLevels
+
+    note_sur_10: Optional[Number]
+
+
+@dataclass(frozen=True)
+class MasteryObjectivesResult:
+    """
+    Résultat interne pour data_kind=maitrise_objectifs.
+
+    Structure alignée sur le schéma 2026 :
+    - mode
+    - par_objectif
+    - note_globale_objectifs_preformation
+    """
+
+    mode: Optional[MasteryMode]
+
+    par_objectif: Tuple[
+        MasteryObjectiveResult,
+        ...
+    ]
+
+    note_globale_objectifs_preformation: (
+        Optional[Number]
+    )
+
+
+# =====================================================
+# Union des résultats actuellement supportés
+# =====================================================
+
+QuestionExtractionPayload = Union[
+    Distribution1To5Result,
+    VerbatimsResult,
+    MasteryObjectivesResult,
+]
+
+
+SUPPORTED_DATA_KINDS: Tuple[
+    DataKind,
+    ...
+] = (
+    "distribution_1_5",
+    "verbatims",
+    "maitrise_objectifs",
+)
+
+
+# =====================================================
+# Helpers numériques
+# =====================================================
+
+def _is_number(
+    value: object,
+) -> bool:
+    """
+    bool est volontairement refusé même s'il hérite
+    de int en Python.
+    """
+
+    return (
+        isinstance(
+            value,
+            (int, float),
+        )
+        and not isinstance(
+            value,
+            bool,
+        )
+    )
+
+
+def _validate_optional_number(
+    value: Optional[Number],
+    field_name: str,
+    *,
+    minimum: Optional[float] = None,
+    maximum: Optional[float] = None,
+) -> None:
+    """
+    Validation générique des valeurs numériques.
+    """
+
+    if value is None:
+        return
+
+    if not _is_number(value):
+        raise TypeError(
+            f"{field_name} doit être numérique "
+            "ou None."
+        )
+
+    numeric = float(value)
+
+    if not math.isfinite(numeric):
+        raise ValueError(
+            f"{field_name} doit être fini."
+        )
+
+    if (
+        minimum is not None
+        and numeric < minimum
+    ):
+        raise ValueError(
+            f"{field_name} doit être >= "
+            f"{minimum}."
+        )
+
+    if (
+        maximum is not None
+        and numeric > maximum
+    ):
+        raise ValueError(
+            f"{field_name} doit être <= "
+            f"{maximum}."
+        )
+
+
+# =====================================================
+# Validation distribution 1 -> 5
+# =====================================================
+
+def validate_distribution_1_to_5(
+    result: Distribution1To5Result,
+) -> None:
+    """
+    Contrôle le contrat de distribution.
+
+    Les cinq niveaux doivent exister exactement
+    une fois chacun.
+    """
+
+    _validate_optional_number(
+        result.nb_votants,
+        "nb_votants",
+        minimum=0,
+    )
+
+    if len(result.levels) != 5:
+        raise ValueError(
+            "Une distribution 1-5 doit contenir "
+            "exactement 5 niveaux."
+        )
+
+    actual_levels = [
+        level.level
+        for level in result.levels
+    ]
+
+    if actual_levels != [
+        1,
+        2,
+        3,
+        4,
+        5,
+    ]:
+        raise ValueError(
+            "Les niveaux doivent être ordonnés "
+            "exactement [1, 2, 3, 4, 5]. "
+            f"Reçu : {actual_levels}"
+        )
+
+    for level in result.levels:
+
+        _validate_optional_number(
+            level.nb_votants,
+            (
+                f"level_{level.level}."
+                "nb_votants"
+            ),
+            minimum=0,
+        )
+
+        _validate_optional_number(
+            level.pourcentage,
+            (
+                f"level_{level.level}."
+                "pourcentage"
+            ),
+            minimum=0,
+            maximum=100,
+        )
+
+
+# =====================================================
+# Validation verbatims
+# =====================================================
+
+def validate_verbatims(
+    result: VerbatimsResult,
+) -> None:
+    """
+    Les verbatims doivent rester des chaînes
+    non vides.
+
+    Aucun nettoyage du contenu n'est effectué ici.
+    """
+
+    for index, item in enumerate(
+        result.items,
+        start=1,
+    ):
+
+        if not isinstance(item, str):
+            raise TypeError(
+                "Verbatim "
+                f"{index} doit être une chaîne."
+            )
+
+        if not item.strip():
+            raise ValueError(
+                "Verbatim "
+                f"{index} est vide."
+            )
+
+
+# =====================================================
+# Validation maîtrise des objectifs
+# =====================================================
+
+def validate_mastery_objectives(
+    result: MasteryObjectivesResult,
+) -> None:
+    """
+    Validation du contrat de maîtrise.
+
+    Le mode peut être absent si la source ne permet
+    pas de déterminer de façon fiable la présentation.
+    """
+
+    if result.mode not in (
+        None,
+        "4_niveaux",
+        "notes_sur_10",
+    ):
+        raise ValueError(
+            "mode invalide pour "
+            "maitrise_objectifs."
+        )
+
+    _validate_optional_number(
+        result.note_globale_objectifs_preformation,
+        (
+            "note_globale_"
+            "objectifs_preformation"
+        ),
+        minimum=0,
+        maximum=10,
+    )
+
+    for index, objective in enumerate(
+        result.par_objectif,
+        start=1,
+    ):
+
+        if not isinstance(
+            objective.objectif_label,
+            str,
+        ):
+            raise TypeError(
+                "objectif_label doit être "
+                "une chaîne."
+            )
+
+        if not objective.objectif_label.strip():
+            raise ValueError(
+                "objectif_label vide pour "
+                f"l'objectif {index}."
+            )
+
+        _validate_optional_number(
+            objective.levels.totalement,
+            (
+                f"objectif_{index}."
+                "levels.totalement"
+            ),
+            minimum=0,
+        )
+
+        _validate_optional_number(
+            objective.levels.en_partie,
+            (
+                f"objectif_{index}."
+                "levels.en_partie"
+            ),
+            minimum=0,
+        )
+
+        _validate_optional_number(
+            objective.levels.insuffisamment,
+            (
+                f"objectif_{index}."
+                "levels.insuffisamment"
+            ),
+            minimum=0,
+        )
+
+        _validate_optional_number(
+            objective.levels.pas_du_tout,
+            (
+                f"objectif_{index}."
+                "levels.pas_du_tout"
+            ),
+            minimum=0,
+        )
+
+        _validate_optional_number(
+            objective.note_sur_10,
+            (
+                f"objectif_{index}."
+                "note_sur_10"
+            ),
+            minimum=0,
+            maximum=10,
+        )
+
+
+# =====================================================
+# Validation selon data_kind
+# =====================================================
+
+def validate_extraction_payload(
+    data_kind: DataKind,
+    payload: QuestionExtractionPayload,
+) -> None:
+    """
+    Vérifie que le résultat correspond bien
+    au data_kind demandé.
+
+    Pour l'instant seuls les trois contrats
+    nécessaires à la préformation 2026 sont
+    implémentés.
+    """
+
+    if data_kind == "distribution_1_5":
+
+        if not isinstance(
+            payload,
+            Distribution1To5Result,
+        ):
+            raise TypeError(
+                "distribution_1_5 attend "
+                "Distribution1To5Result."
+            )
+
+        validate_distribution_1_to_5(
+            payload
+        )
+
+        return
+
+    if data_kind == "verbatims":
+
+        if not isinstance(
+            payload,
+            VerbatimsResult,
+        ):
+            raise TypeError(
+                "verbatims attend "
+                "VerbatimsResult."
+            )
+
+        validate_verbatims(
+            payload
+        )
+
+        return
+
+    if data_kind == "maitrise_objectifs":
+
+        if not isinstance(
+            payload,
+            MasteryObjectivesResult,
+        ):
+            raise TypeError(
+                "maitrise_objectifs attend "
+                "MasteryObjectivesResult."
+            )
+
+        validate_mastery_objectives(
+            payload
+        )
+
+        return
+
+    raise NotImplementedError(
+        "Aucun contrat d'extraction n'est "
+        "encore défini pour data_kind="
+        f"{data_kind!r}."
+    )
