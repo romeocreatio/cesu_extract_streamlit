@@ -1,4 +1,4 @@
-﻿# utils/question_task_executor.py
+# utils/question_task_executor.py
 
 from __future__ import annotations
 
@@ -8,6 +8,12 @@ from typing import (
     Sequence,
 )
 
+from utils.question_deterministic_payload_adapter import (
+    DeterministicTypedPayload,
+)
+from utils.question_extraction_contracts import (
+    validate_extraction_payload,
+)
 from utils.question_extraction_tasks import (
     QuestionExtractionTask,
     QuestionOccurrenceTaskGroup,
@@ -23,7 +29,7 @@ from utils.question_result_consolidator import (
 
 
 # =====================================================
-# Contrat de l'extracteur brut
+# Contrat de l'extracteur de tâche
 # =====================================================
 
 RawTaskExtractor = Callable[
@@ -96,6 +102,88 @@ def _validate_tasks(
 
 
 # =====================================================
+# Normalisation de la sortie d'un extracteur
+# =====================================================
+
+def _chunk_result_from_extractor_output(
+    task: QuestionExtractionTask,
+    extractor_output: object,
+) -> ChunkExtractionResult:
+    """
+    Transforme la sortie d'un extracteur en
+    ChunkExtractionResult.
+
+    Deux chemins sont supportés :
+
+    1. sortie historique brute :
+       parsing selon task.data_kind ;
+
+    2. sortie déterministe déjà typée :
+       conservation du detected_data_kind réel.
+    """
+
+    # ---------------------------------------------
+    # Nouveau chemin déterministe
+    # ---------------------------------------------
+
+    if isinstance(
+        extractor_output,
+        DeterministicTypedPayload,
+    ):
+
+        # Le type attendu transporté par
+        # l'extraction déterministe doit correspondre
+        # à la tâche lorsqu'il est renseigné.
+        if (
+            extractor_output.expected_data_kind
+            is not None
+            and extractor_output.expected_data_kind
+            != task.data_kind
+        ):
+            raise ValueError(
+                "expected_data_kind incohérent entre "
+                "la tâche et l'extraction "
+                f"déterministe pour {task.task_id} : "
+                f"task={task.data_kind!r}, "
+                "extraction="
+                f"{extractor_output.expected_data_kind!r}"
+            )
+
+        # Défense supplémentaire :
+        # le payload doit bien respecter le type
+        # réellement détecté.
+        validate_extraction_payload(
+            data_kind=(
+                extractor_output.detected_data_kind
+            ),
+            payload=extractor_output.payload,
+        )
+
+        return ChunkExtractionResult(
+            task_id=task.task_id,
+            payload=extractor_output.payload,
+            detected_data_kind=(
+                extractor_output.detected_data_kind
+            ),
+        )
+
+    # ---------------------------------------------
+    # Chemin historique : JSON brut / dict
+    # ---------------------------------------------
+
+    payload = parse_extraction_payload(
+        data_kind=task.data_kind,
+        raw=extractor_output,
+    )
+
+    return ChunkExtractionResult(
+        task_id=task.task_id,
+        payload=payload,
+    )
+
+
+
+# =====================================================
 # Exécution d'une tâche
 # =====================================================
 
@@ -109,9 +197,10 @@ def execute_question_extraction_task(
     Étapes :
 
     1. l'extracteur reçoit la tâche ;
-    2. il renvoie un objet JSON brut ;
-    3. le parseur transforme ce JSON selon data_kind ;
-    4. le payload est validé ;
+    2. il renvoie soit un objet JSON brut,
+       soit un DeterministicTypedPayload ;
+    3. le chemin brut est parsé selon task.data_kind ;
+    4. le chemin déterministe conserve le type réel ;
     5. un ChunkExtractionResult est produit.
 
     Aucun appel OpenAI n'est imposé ici.
@@ -121,18 +210,13 @@ def execute_question_extraction_task(
         [task]
     )
 
-    raw_payload = extractor(
+    extractor_output = extractor(
         task
     )
 
-    payload = parse_extraction_payload(
-        data_kind=task.data_kind,
-        raw=raw_payload,
-    )
-
-    return ChunkExtractionResult(
-        task_id=task.task_id,
-        payload=payload,
+    return _chunk_result_from_extractor_output(
+        task=task,
+        extractor_output=extractor_output,
     )
 
 
