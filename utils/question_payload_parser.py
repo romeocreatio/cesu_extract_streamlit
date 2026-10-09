@@ -1,4 +1,4 @@
-﻿# utils/question_payload_parser.py
+# utils/question_payload_parser.py
 
 from __future__ import annotations
 
@@ -12,6 +12,9 @@ from typing import (
 from utils.question_extraction_contracts import (
     Distribution1To5Level,
     Distribution1To5Result,
+    DistributionCategoriesResult,
+    DistributionCategoryItem,
+    DistributionYesNoResult,
     MasteryLevels,
     MasteryObjectiveResult,
     MasteryObjectivesResult,
@@ -370,6 +373,209 @@ def _parse_distribution_1_to_5(
 
 
 # =====================================================
+# Distribution catégorielle / Oui-Non
+# =====================================================
+
+def _parse_distribution_items(
+    raw: object,
+    *,
+    field_name: str,
+) -> tuple[
+    DistributionCategoryItem,
+    ...
+]:
+    """
+    Parse les modalités d'une distribution
+    catégorielle sans modifier les libellés source.
+    """
+
+    items_raw = _require_sequence(
+        raw,
+        f"{field_name}.items",
+    )
+
+    items = []
+
+    for index, item_raw in enumerate(
+        items_raw,
+        start=1,
+    ):
+
+        item_field = (
+            f"{field_name}.items[{index}]"
+        )
+
+        item_obj = _require_mapping(
+            item_raw,
+            item_field,
+        )
+
+        _require_exact_keys(
+            item_obj,
+            required={
+                "label",
+                "nb_votants",
+                "pourcentage",
+            },
+            optional=set(),
+            field_name=item_field,
+        )
+
+        label = item_obj["label"]
+
+        if not isinstance(
+            label,
+            str,
+        ):
+            raise TypeError(
+                f"{item_field}.label doit "
+                "être une chaîne."
+            )
+
+        # IMPORTANT :
+        # le libellé source est conservé
+        # strictement tel qu'il est reçu.
+        items.append(
+            DistributionCategoryItem(
+                label=label,
+                nb_votants=(
+                    _parse_optional_number(
+                        item_obj[
+                            "nb_votants"
+                        ],
+                        (
+                            f"{item_field}."
+                            "nb_votants"
+                        ),
+                    )
+                ),
+                pourcentage=(
+                    _parse_optional_number(
+                        item_obj[
+                            "pourcentage"
+                        ],
+                        (
+                            f"{item_field}."
+                            "pourcentage"
+                        ),
+                        allow_percent_suffix=True,
+                    )
+                ),
+            )
+        )
+
+    return tuple(items)
+
+
+def _parse_distribution_categories(
+    raw: object,
+) -> DistributionCategoriesResult:
+    """
+    Parse une distribution à catégories libres.
+    """
+
+    field_name = (
+        "distribution_categories"
+    )
+
+    obj = _require_mapping(
+        raw,
+        field_name,
+    )
+
+    _require_exact_keys(
+        obj,
+        required={
+            "nb_votants",
+            "items",
+        },
+        optional=set(),
+        field_name=field_name,
+    )
+
+    result = DistributionCategoriesResult(
+        nb_votants=(
+            _parse_optional_number(
+                obj["nb_votants"],
+                (
+                    "distribution_categories."
+                    "nb_votants"
+                ),
+            )
+        ),
+        items=(
+            _parse_distribution_items(
+                obj["items"],
+                field_name=field_name,
+            )
+        ),
+    )
+
+    validate_extraction_payload(
+        "distribution_categories",
+        result,
+    )
+
+    return result
+
+
+def _parse_distribution_yes_no(
+    raw: object,
+) -> DistributionYesNoResult:
+    """
+    Parse une distribution strictement Oui / Non.
+
+    La validation finale décide si les deux
+    modalités correspondent réellement à Oui et Non.
+    """
+
+    field_name = (
+        "distribution_yes_no"
+    )
+
+    obj = _require_mapping(
+        raw,
+        field_name,
+    )
+
+    _require_exact_keys(
+        obj,
+        required={
+            "nb_votants",
+            "items",
+        },
+        optional=set(),
+        field_name=field_name,
+    )
+
+    result = DistributionYesNoResult(
+        nb_votants=(
+            _parse_optional_number(
+                obj["nb_votants"],
+                (
+                    "distribution_yes_no."
+                    "nb_votants"
+                ),
+            )
+        ),
+        items=(
+            _parse_distribution_items(
+                obj["items"],
+                field_name=field_name,
+            )
+        ),
+    )
+
+    validate_extraction_payload(
+        "distribution_yes_no",
+        result,
+    )
+
+    return result
+
+
+
+# =====================================================
 # Verbatims
 # =====================================================
 
@@ -677,6 +883,20 @@ def parse_extraction_payload(
     if data_kind == "distribution_1_5":
         return (
             _parse_distribution_1_to_5(
+                raw
+            )
+        )
+
+    if data_kind == "distribution_categories":
+        return (
+            _parse_distribution_categories(
+                raw
+            )
+        )
+
+    if data_kind == "distribution_yes_no":
+        return (
+            _parse_distribution_yes_no(
                 raw
             )
         )
