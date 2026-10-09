@@ -20,6 +20,10 @@ from utils.question_deterministic_extractor import (
 from utils.question_deterministic_payload_adapter import (
     DeterministicTypedPayload,
     deterministic_extraction_to_typed_payload,
+    mastery_layout_to_typed_payload,
+)
+from utils.mastery_layout_extractor import (
+    extract_mastery_layout,
 )
 from utils.question_extraction_tasks import (
     QuestionExtractionTask,
@@ -364,6 +368,8 @@ class QuestionHybridExtractor:
         if (
             task.data_kind
             not in DISTRIBUTION_DATA_KINDS
+            and task.data_kind
+            != "maitrise_objectifs"
         ):
 
             return self._fallback(
@@ -400,6 +406,44 @@ class QuestionHybridExtractor:
         # -----------------------------------------
         # Extraction locale
         # -----------------------------------------
+
+        if (
+            task.data_kind
+            == "maitrise_objectifs"
+        ):
+
+            mastery_extraction = (
+                extract_mastery_layout(
+                    context
+                )
+            )
+
+            if mastery_extraction.succeeded:
+
+                return mastery_layout_to_typed_payload(
+                    mastery_extraction,
+                    expected_data_kind=(
+                        task.data_kind
+                    ),
+                )
+
+            reason = (
+                mastery_extraction.status
+            )
+
+            if mastery_extraction.issues:
+
+                reason += (
+                    ": "
+                    + ", ".join(
+                        mastery_extraction.issues
+                    )
+                )
+
+            return self._fallback(
+                task,
+                reason=reason,
+            )
 
         extraction = (
             extract_question_deterministically(

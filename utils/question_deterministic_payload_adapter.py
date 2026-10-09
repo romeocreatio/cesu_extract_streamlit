@@ -11,6 +11,9 @@ from utils.distribution_layout_extractor import (
 from utils.question_deterministic_extractor import (
     DeterministicQuestionExtraction,
 )
+from utils.mastery_layout_extractor import (
+    MasteryLayoutExtraction,
+)
 from utils.question_extraction_contracts import (
     QuestionExtractionPayload,
 )
@@ -230,6 +233,67 @@ def deterministic_extraction_to_typed_payload(
     return DeterministicTypedPayload(
         expected_data_kind=(
             extraction.expected_data_kind
+        ),
+        detected_data_kind=(
+            detected_data_kind
+        ),
+        payload=payload,
+        method=extraction.method,
+    )
+
+
+# =====================================================
+# Mastery objectives -> typed payload
+# =====================================================
+
+def mastery_layout_to_typed_payload(
+    extraction: MasteryLayoutExtraction,
+    *,
+    expected_data_kind: Optional[
+        DataKind
+    ],
+) -> DeterministicTypedPayload:
+    """
+    Convert a successful deterministic mastery-layout
+    extraction into a validated internal typed payload.
+
+    No business value is calculated here.
+    """
+
+    if not isinstance(
+        extraction,
+        MasteryLayoutExtraction,
+    ):
+        raise TypeError(
+            "extraction must be a "
+            "MasteryLayoutExtraction."
+        )
+
+    if not extraction.succeeded:
+        raise ValueError(
+            "Cannot adapt an unsuccessful "
+            "mastery layout extraction: "
+            f"{extraction.status!r}."
+        )
+
+    if extraction.raw_payload is None:
+        raise ValueError(
+            "A successful mastery extraction "
+            "must contain raw_payload."
+        )
+
+    detected_data_kind: DataKind = (
+        "maitrise_objectifs"
+    )
+
+    payload = parse_extraction_payload(
+        detected_data_kind,
+        extraction.raw_payload,
+    )
+
+    return DeterministicTypedPayload(
+        expected_data_kind=(
+            expected_data_kind
         ),
         detected_data_kind=(
             detected_data_kind
