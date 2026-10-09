@@ -154,21 +154,43 @@ class VerbatimsResult:
 # =====================================================
 
 @dataclass(frozen=True)
+class MasteryLevelValue:
+    """
+    Valeurs source associées à UNE modalité
+    de maîtrise.
+
+    Exemple réel :
+
+        Totalement 11 4 %
+
+    devient :
+
+        nb_votants = 11
+        pourcentage = 4
+
+    Aucune valeur manquante ne doit être
+    calculée ou déduite.
+    """
+
+    nb_votants: Optional[Number]
+    pourcentage: Optional[Number]
+
+
+@dataclass(frozen=True)
 class MasteryLevels:
     """
-    Valeurs numériques présentes pour les quatre
-    niveaux possibles d'auto-évaluation.
+    Distribution de maîtrise sur les quatre
+    modalités Digiforma.
 
-    Le contrat ne suppose pas ici s'il s'agit de
-    nombres de répondants ou d'une autre valeur
-    numérique déjà présente dans la source.
+    Chaque modalité conserve séparément :
+    - l'effectif explicitement affiché ;
+    - le pourcentage explicitement affiché.
     """
 
-    totalement: Optional[Number]
-    en_partie: Optional[Number]
-    insuffisamment: Optional[Number]
-    pas_du_tout: Optional[Number]
-
+    totalement: MasteryLevelValue
+    en_partie: MasteryLevelValue
+    insuffisamment: MasteryLevelValue
+    pas_du_tout: MasteryLevelValue
 
 @dataclass(frozen=True)
 class MasteryObjectiveResult:
@@ -541,14 +563,47 @@ def validate_verbatims(
 # Validation maîtrise des objectifs
 # =====================================================
 
+def _validate_mastery_level_value(
+    value: MasteryLevelValue,
+    field_name: str,
+) -> None:
+    """
+    Valide une modalité de maîtrise sans
+    calculer ni compléter aucune donnée.
+    """
+
+    if not isinstance(
+        value,
+        MasteryLevelValue,
+    ):
+        raise TypeError(
+            f"{field_name} doit être "
+            "un MasteryLevelValue."
+        )
+
+    _validate_optional_number(
+        value.nb_votants,
+        f"{field_name}.nb_votants",
+        minimum=0,
+    )
+
+    _validate_optional_number(
+        value.pourcentage,
+        f"{field_name}.pourcentage",
+        minimum=0,
+        maximum=100,
+    )
+
+
 def validate_mastery_objectives(
     result: MasteryObjectivesResult,
 ) -> None:
     """
     Validation du contrat de maîtrise.
 
-    Le mode peut être absent si la source ne permet
-    pas de déterminer de façon fiable la présentation.
+    Pour chaque objectif, les effectifs et
+    pourcentages des quatre modalités sont
+    conservés séparément.
     """
 
     if result.mode not in (
@@ -591,40 +646,24 @@ def validate_mastery_objectives(
                 f"l'objectif {index}."
             )
 
-        _validate_optional_number(
+        _validate_mastery_level_value(
             objective.levels.totalement,
-            (
-                f"objectif_{index}."
-                "levels.totalement"
-            ),
-            minimum=0,
+            f"objectif_{index}.levels.totalement",
         )
 
-        _validate_optional_number(
+        _validate_mastery_level_value(
             objective.levels.en_partie,
-            (
-                f"objectif_{index}."
-                "levels.en_partie"
-            ),
-            minimum=0,
+            f"objectif_{index}.levels.en_partie",
         )
 
-        _validate_optional_number(
+        _validate_mastery_level_value(
             objective.levels.insuffisamment,
-            (
-                f"objectif_{index}."
-                "levels.insuffisamment"
-            ),
-            minimum=0,
+            f"objectif_{index}.levels.insuffisamment",
         )
 
-        _validate_optional_number(
+        _validate_mastery_level_value(
             objective.levels.pas_du_tout,
-            (
-                f"objectif_{index}."
-                "levels.pas_du_tout"
-            ),
-            minimum=0,
+            f"objectif_{index}.levels.pas_du_tout",
         )
 
         _validate_optional_number(
@@ -636,7 +675,6 @@ def validate_mastery_objectives(
             minimum=0,
             maximum=10,
         )
-
 
 # =====================================================
 # Validation selon data_kind

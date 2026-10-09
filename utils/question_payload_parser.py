@@ -15,6 +15,7 @@ from utils.question_extraction_contracts import (
     DistributionCategoriesResult,
     DistributionCategoryItem,
     DistributionYesNoResult,
+    MasteryLevelValue,
     MasteryLevels,
     MasteryObjectiveResult,
     MasteryObjectivesResult,
@@ -646,6 +647,44 @@ def _parse_verbatims(
 # Maîtrise des objectifs
 # =====================================================
 
+def _parse_mastery_level_value(
+    raw: object,
+    *,
+    field_name: str,
+) -> MasteryLevelValue:
+
+    obj = _require_mapping(
+        raw,
+        field_name,
+    )
+
+    _require_exact_keys(
+        obj,
+        required={
+            "nb_votants",
+            "pourcentage",
+        },
+        optional=set(),
+        field_name=field_name,
+    )
+
+    return MasteryLevelValue(
+        nb_votants=(
+            _parse_optional_number(
+                obj["nb_votants"],
+                f"{field_name}.nb_votants",
+            )
+        ),
+        pourcentage=(
+            _parse_optional_number(
+                obj["pourcentage"],
+                f"{field_name}.pourcentage",
+                allow_percent_suffix=True,
+            )
+        ),
+    )
+
+
 def _parse_mastery_levels(
     raw: object,
     *,
@@ -671,43 +710,38 @@ def _parse_mastery_levels(
 
     return MasteryLevels(
         totalement=(
-            _parse_optional_number(
+            _parse_mastery_level_value(
                 obj["totalement"],
-                (
-                    f"{field_name}."
-                    "totalement"
+                field_name=(
+                    f"{field_name}.totalement"
                 ),
             )
         ),
         en_partie=(
-            _parse_optional_number(
+            _parse_mastery_level_value(
                 obj["en_partie"],
-                (
-                    f"{field_name}."
-                    "en_partie"
+                field_name=(
+                    f"{field_name}.en_partie"
                 ),
             )
         ),
         insuffisamment=(
-            _parse_optional_number(
+            _parse_mastery_level_value(
                 obj["insuffisamment"],
-                (
-                    f"{field_name}."
-                    "insuffisamment"
+                field_name=(
+                    f"{field_name}.insuffisamment"
                 ),
             )
         ),
         pas_du_tout=(
-            _parse_optional_number(
+            _parse_mastery_level_value(
                 obj["pas_du_tout"],
-                (
-                    f"{field_name}."
-                    "pas_du_tout"
+                field_name=(
+                    f"{field_name}.pas_du_tout"
                 ),
             )
         ),
     )
-
 
 def _parse_mastery_objectives(
     raw: object,

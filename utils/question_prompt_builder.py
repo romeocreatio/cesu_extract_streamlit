@@ -1,4 +1,4 @@
-﻿# utils/question_prompt_builder.py
+# utils/question_prompt_builder.py
 
 from __future__ import annotations
 
@@ -211,50 +211,114 @@ Extraire les résultats d'auto-évaluation de maîtrise
 des objectifs de formation présents dans le
 TEXTE SOURCE.
 
-Deux présentations sont possibles :
+STRUCTURE POSSIBLE
 
-- "4_niveaux"
-- "notes_sur_10"
+La question principale peut comporter :
+
+1. une note globale sur 10 ;
+
+2. plusieurs sous-objectifs ;
+
+3. pour chaque sous-objectif :
+   - une note sur 10 ;
+   - une répartition selon quatre modalités :
+     totalement,
+     en partie,
+     insuffisamment,
+     pas du tout ;
+
+4. pour chaque modalité :
+   - un nombre de votants ;
+   - un pourcentage.
 
 RÈGLES SPÉCIFIQUES
 
-- Utilise "4_niveaux" uniquement lorsque la source
-  présente clairement les quatre modalités :
-  totalement, en partie, insuffisamment,
-  pas du tout.
+- La note globale correspond uniquement à la note
+  explicitement associée à la question principale :
 
-- Utilise "notes_sur_10" uniquement lorsque la source
-  présente clairement des notes sur 10.
+  "À ce jour, considérez-vous maîtriser les
+  objectifs du programme ?"
 
-- Si le mode ne peut pas être déterminé de façon
-  fiable, utilise null.
+- Ne confonds jamais cette note globale avec
+  la note d'un sous-objectif.
+
+- Si la source affiche par exemple :
+
+      À ce jour...
+      5.7 / 10
+
+  alors :
+
+      note_globale_objectifs_preformation = 5.7
 
 - objectif_label doit reprendre exactement le texte
-  de l'objectif visible dans la source.
+  du sous-objectif visible dans la source.
 
-- Pour chaque objectif visible dans ce chunk,
+- Pour chaque sous-objectif visible dans ce chunk,
   crée un objet dans par_objectif.
 
-- Ne crée jamais un objectif absent du chunk.
+- note_sur_10 correspond uniquement à une note /10
+  explicitement associée à ce sous-objectif.
 
-- Pour le mode "4_niveaux" :
-  renseigne uniquement les valeurs explicitement
-  présentes dans les quatre niveaux et mets
-  note_sur_10 à null si elle n'est pas présente.
+- Pour les quatre modalités de maîtrise, conserve
+  séparément :
 
-- Pour le mode "notes_sur_10" :
-  renseigne note_sur_10 uniquement lorsqu'elle est
-  explicitement présente.
-  Les quatre niveaux restent à null s'ils ne sont
-  pas présents.
+  - nb_votants :
+    effectif explicitement affiché ;
 
-- note_globale_objectifs_preformation correspond
-  uniquement à une note globale explicitement
-  affichée dans la source.
+  - pourcentage :
+    pourcentage explicitement affiché.
 
-- Ne calcule aucune moyenne.
+- Exemple :
 
-- Ne transforme pas des pourcentages en effectifs.
+      Totalement 11 4 %
+
+  signifie :
+
+      "nb_votants": 11
+      "pourcentage": 4
+
+- Exemple :
+
+      En partie 58
+
+  signifie :
+
+      "nb_votants": 58
+      "pourcentage": null
+
+  si aucun pourcentage n'est explicitement visible.
+
+- Ne calcule jamais un pourcentage à partir
+  d'un effectif.
+
+- Ne calcule jamais un effectif à partir
+  d'un pourcentage.
+
+- Ne reconstitue jamais une valeur manquante
+  à partir du total des répondants.
+
+- Une note sur 10 et une distribution
+  à quatre niveaux peuvent être présentes
+  simultanément pour le même sous-objectif.
+  Dans ce cas, conserve les deux.
+
+MODE
+
+- Utilise "4_niveaux" lorsque les modalités
+  totalement / en partie / insuffisamment /
+  pas du tout sont présentes.
+
+- La présence simultanée de notes sur 10
+  n'empêche pas d'utiliser "4_niveaux".
+
+- Utilise "notes_sur_10" uniquement lorsque
+  les quatre modalités ne sont pas présentes
+  et que la source présente seulement
+  des notes sur 10.
+
+- Si le mode ne peut pas être déterminé
+  de façon fiable, utilise null.
 
 SCHÉMA JSON EXACT
 
@@ -264,10 +328,22 @@ SCHÉMA JSON EXACT
     {
       "objectif_label": "texte exact de l'objectif",
       "levels": {
-        "totalement": null,
-        "en_partie": null,
-        "insuffisamment": null,
-        "pas_du_tout": null
+        "totalement": {
+          "nb_votants": null,
+          "pourcentage": null
+        },
+        "en_partie": {
+          "nb_votants": null,
+          "pourcentage": null
+        },
+        "insuffisamment": {
+          "nb_votants": null,
+          "pourcentage": null
+        },
+        "pas_du_tout": {
+          "nb_votants": null,
+          "pourcentage": null
+        }
       },
       "note_sur_10": null
     }
