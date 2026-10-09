@@ -1,4 +1,4 @@
-﻿# utils/question_result_consolidator.py
+# utils/question_result_consolidator.py
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import (
     Dict,
     List,
+    Optional,
     Sequence,
     Tuple,
 )
@@ -42,6 +43,14 @@ class ChunkExtractionResult:
     task_id: str
     payload: QuestionExtractionPayload
 
+    # Type réellement produit par l'extraction.
+    #
+    # None conserve le comportement historique :
+    # le data_kind attendu par la tâche est utilisé.
+    detected_data_kind: Optional[
+        DataKind
+    ] = None
+
 
 # =====================================================
 # Résultat consolidé d'une occurrence
@@ -70,6 +79,70 @@ class OccurrenceExtractionResult:
     source_task_ids: Tuple[str, ...]
 
     payload: QuestionExtractionPayload
+
+    # Type réellement observé dans la source.
+    #
+    # data_kind reste le type attendu par le registre
+    # pour préserver la compatibilité du pipeline.
+    detected_data_kind: Optional[
+        DataKind
+    ] = None
+
+    @property
+    def effective_data_kind(
+        self,
+    ) -> DataKind:
+        """
+        Type à utiliser pour valider/interpréter
+        le payload.
+        """
+
+        return (
+            self.detected_data_kind
+            or self.data_kind
+        )
+
+    @property
+    def matches_expected_data_kind(
+        self,
+    ) -> Optional[bool]:
+        """
+        Compare le type réel au type du registre.
+
+        None signifie qu'aucun type réellement
+        détecté n'a été fourni.
+        """
+
+        if self.detected_data_kind is None:
+            return None
+
+        return (
+            self.detected_data_kind
+            == self.data_kind
+        )
+
+
+# =====================================================
+# Type réellement porté par un résultat de chunk
+# =====================================================
+
+def _effective_chunk_data_kind(
+    task: QuestionExtractionTask,
+    result: ChunkExtractionResult,
+) -> DataKind:
+    """
+    Retourne le type réellement extrait lorsqu'il
+    est fourni.
+
+    Sinon, conserve le comportement historique
+    basé sur le data_kind attendu par la tâche.
+    """
+
+    return (
+        result.detected_data_kind
+        or task.data_kind
+    )
+
 
 
 # =====================================================
@@ -203,7 +276,12 @@ def _ordered_task_results(
         ]
 
         validate_extraction_payload(
-            data_kind=task.data_kind,
+            data_kind=(
+                _effective_chunk_data_kind(
+                    task,
+                    result,
+                )
+            ),
             payload=result.payload,
         )
 
@@ -215,6 +293,114 @@ def _ordered_task_results(
         )
 
     return output
+
+
+# =====================================================
+# Type réel d'une occurrence
+# =====================================================
+
+def _occurrence_effective_data_kind(
+    pairs: Sequence[
+        Tuple[
+            QuestionExtractionTask,
+            ChunkExtractionResult,
+        ]
+    ],
+) -> DataKind:
+    """
+    Type à utiliser réellement pour valider
+    et consolider les payloads.
+
+    detected_data_kind est prioritaire lorsqu'il
+    existe ; sinon le data_kind attendu par la tâche
+    conserve le comportement historique.
+    """
+
+    if not pairs:
+        raise ValueError(
+            "Impossible de déterminer le type "
+            "d'une occurrence vide."
+        )
+
+    kinds = [
+        _effective_chunk_data_kind(
+            task,
+            result,
+        )
+        for task, result in pairs
+    ]
+
+    unique_kinds = set(
+        kinds
+    )
+
+    if len(unique_kinds) != 1:
+        raise ValueError(
+            "Types effectifs incohérents entre "
+            "les chunks d'une même occurrence : "
+            f"{sorted(unique_kinds)}"
+        )
+
+    return kinds[0]
+
+
+def _occurrence_detected_data_kind(
+    pairs: Sequence[
+        Tuple[
+            QuestionExtractionTask,
+            ChunkExtractionResult,
+        ]
+    ],
+) -> Optional[
+    DataKind
+]:
+    """
+    Retourne uniquement le type explicitement
+    détecté dans la source.
+
+    Aucun type détecté :
+        None
+
+    Tous les chunks détectent le même type :
+        ce DataKind
+
+    Mélange de chunks détectés et non détectés :
+        refus explicite pour ne pas inventer un
+        type à l'échelle de toute l'occurrence.
+    """
+
+    detected = [
+        result.detected_data_kind
+        for _, result in pairs
+    ]
+
+    if all(
+        value is None
+        for value in detected
+    ):
+        return None
+
+    if any(
+        value is None
+        for value in detected
+    ):
+        raise ValueError(
+            "detected_data_kind partiellement "
+            "renseigné dans une même occurrence."
+        )
+
+    unique_detected = set(
+        detected
+    )
+
+    if len(unique_detected) != 1:
+        raise ValueError(
+            "Types réellement détectés incohérents "
+            "entre les chunks d'une même occurrence : "
+            f"{sorted(unique_detected)}"
+        )
+
+    return detected[0]
 
 
 # =====================================================
@@ -423,6 +609,18 @@ def consolidate_occurrence_results(
             f"{group.occurrence_id}"
         )
 
+    effective_data_kind = (
+        _occurrence_effective_data_kind(
+            pairs
+        )
+    )
+
+    detected_data_kind = (
+        _occurrence_detected_data_kind(
+            pairs
+        )
+    )
+
     # ---------------------------------------------
     # Verbatims
     # ---------------------------------------------
@@ -436,6 +634,13 @@ def consolidate_occurrence_results(
             raise ValueError(
                 "concat_verbatims incohérent avec "
                 f"data_kind={group.data_kind!r}"
+            )
+
+        if effective_data_kind != "verbatims":
+            raise ValueError(
+                "concat_verbatims incohérent avec "
+                "effective_data_kind="
+                f"{effective_data_kind!r}"
             )
 
         payload: QuestionExtractionPayload = (
@@ -470,7 +675,7 @@ def consolidate_occurrence_results(
         )
 
     validate_extraction_payload(
-        data_kind=group.data_kind,
+        data_kind=effective_data_kind,
         payload=payload,
     )
 
@@ -489,6 +694,9 @@ def consolidate_occurrence_results(
             for task, _ in pairs
         ),
         payload=payload,
+        detected_data_kind=(
+            detected_data_kind
+        ),
     )
 
 
