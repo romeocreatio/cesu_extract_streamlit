@@ -1,4 +1,4 @@
-﻿# utils/question_detector.py
+# utils/question_detector.py
 
 from __future__ import annotations
 
@@ -326,6 +326,7 @@ PRE_FORMATION_PATTERNS_2026: Tuple[
         pattern_id="evaluation_competences_detaillee",
         texts=(
             "Evaluez vos competences",
+            "Evaluer vos competences",
         ),
         prefix_words=3,
         window_lines=2,
