@@ -1,4 +1,4 @@
-﻿# utils/question_extraction_contracts.py
+# utils/question_extraction_contracts.py
 
 from __future__ import annotations
 
@@ -11,7 +11,10 @@ from typing import (
     Union,
 )
 
-from utils.question_registry import DataKind
+from utils.question_registry import (
+    DataKind,
+    normalize_question_text,
+)
 
 
 # =====================================================
@@ -71,6 +74,62 @@ class Distribution1To5Result:
         Distribution1To5Level,
         ...
     ]
+
+
+# =====================================================
+# Distribution catégorielle / Oui-Non
+# =====================================================
+
+@dataclass(frozen=True)
+class DistributionCategoryItem:
+    """
+    Une modalité d'une distribution catégorielle.
+
+    Le libellé est conservé tel qu'il apparaît
+    dans la source.
+    """
+
+    label: str
+
+    nb_votants: Optional[Number]
+    pourcentage: Optional[Number]
+
+
+@dataclass(frozen=True)
+class DistributionCategoriesResult:
+    """
+    Distribution comportant des catégories libres.
+
+    Exemple réel 2026 :
+        Oui, beaucoup
+        Oui, un peu
+        Non, pas vraiment
+        Non, pas du tout
+    """
+
+    nb_votants: Optional[Number]
+
+    items: Tuple[
+        DistributionCategoryItem,
+        ...
+    ]
+
+
+@dataclass(frozen=True)
+class DistributionYesNoResult:
+    """
+    Distribution strictement binaire Oui / Non.
+
+    Les libellés source sont conservés dans items.
+    """
+
+    nb_votants: Optional[Number]
+
+    items: Tuple[
+        DistributionCategoryItem,
+        ...
+    ]
+
 
 
 # =====================================================
@@ -153,6 +212,8 @@ class MasteryObjectivesResult:
 
 QuestionExtractionPayload = Union[
     Distribution1To5Result,
+    DistributionCategoriesResult,
+    DistributionYesNoResult,
     VerbatimsResult,
     MasteryObjectivesResult,
 ]
@@ -163,6 +224,8 @@ SUPPORTED_DATA_KINDS: Tuple[
     ...
 ] = (
     "distribution_1_5",
+    "distribution_categories",
+    "distribution_yes_no",
     "verbatims",
     "maitrise_objectifs",
 )
@@ -302,6 +365,144 @@ def validate_distribution_1_to_5(
             minimum=0,
             maximum=100,
         )
+
+
+# =====================================================
+# Validation distributions catégorielles
+# =====================================================
+
+def _validate_distribution_items(
+    items: Tuple[
+        DistributionCategoryItem,
+        ...
+    ],
+    *,
+    field_name: str,
+) -> None:
+    """
+    Validation commune des modalités catégorielles.
+
+    Aucun recalcul de pourcentage ou d'effectif.
+    """
+
+    if len(items) < 2:
+        raise ValueError(
+            f"{field_name} doit contenir "
+            "au moins deux modalités."
+        )
+
+    normalized_labels = []
+
+    for index, item in enumerate(
+        items,
+        start=1,
+    ):
+
+        if not isinstance(
+            item.label,
+            str,
+        ):
+            raise TypeError(
+                f"{field_name}.items[{index}]."
+                "label doit être une chaîne."
+            )
+
+        if not item.label.strip():
+            raise ValueError(
+                f"{field_name}.items[{index}]."
+                "label est vide."
+            )
+
+        normalized_labels.append(
+            normalize_question_text(
+                item.label
+            )
+        )
+
+        _validate_optional_number(
+            item.nb_votants,
+            (
+                f"{field_name}.items[{index}]."
+                "nb_votants"
+            ),
+            minimum=0,
+        )
+
+        _validate_optional_number(
+            item.pourcentage,
+            (
+                f"{field_name}.items[{index}]."
+                "pourcentage"
+            ),
+            minimum=0,
+            maximum=100,
+        )
+
+    if (
+        len(set(normalized_labels))
+        != len(normalized_labels)
+    ):
+        raise ValueError(
+            f"{field_name} contient "
+            "des libellés dupliqués."
+        )
+
+
+def validate_distribution_categories(
+    result: DistributionCategoriesResult,
+) -> None:
+    """
+    Validation structurelle d'une distribution
+    catégorielle libre.
+    """
+
+    _validate_optional_number(
+        result.nb_votants,
+        "distribution_categories.nb_votants",
+        minimum=0,
+    )
+
+    _validate_distribution_items(
+        result.items,
+        field_name="distribution_categories",
+    )
+
+
+def validate_distribution_yes_no(
+    result: DistributionYesNoResult,
+) -> None:
+    """
+    Validation d'une distribution strictement
+    composée de Oui et Non.
+    """
+
+    _validate_optional_number(
+        result.nb_votants,
+        "distribution_yes_no.nb_votants",
+        minimum=0,
+    )
+
+    _validate_distribution_items(
+        result.items,
+        field_name="distribution_yes_no",
+    )
+
+    normalized_labels = {
+        normalize_question_text(
+            item.label
+        )
+        for item in result.items
+    }
+
+    if normalized_labels != {
+        "oui",
+        "non",
+    }:
+        raise ValueError(
+            "distribution_yes_no doit contenir "
+            "exactement les modalités Oui et Non."
+        )
+
 
 
 # =====================================================
@@ -466,6 +667,40 @@ def validate_extraction_payload(
             )
 
         validate_distribution_1_to_5(
+            payload
+        )
+
+        return
+
+    if data_kind == "distribution_categories":
+
+        if not isinstance(
+            payload,
+            DistributionCategoriesResult,
+        ):
+            raise TypeError(
+                "distribution_categories attend "
+                "DistributionCategoriesResult."
+            )
+
+        validate_distribution_categories(
+            payload
+        )
+
+        return
+
+    if data_kind == "distribution_yes_no":
+
+        if not isinstance(
+            payload,
+            DistributionYesNoResult,
+        ):
+            raise TypeError(
+                "distribution_yes_no attend "
+                "DistributionYesNoResult."
+            )
+
+        validate_distribution_yes_no(
             payload
         )
 
