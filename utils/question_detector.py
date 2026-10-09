@@ -315,6 +315,23 @@ PRE_FORMATION_PATTERNS_2026: Tuple[
     ),
 
     # -------------------------------------------------
+    # Evaluation detaillee des competences
+    #
+    # Question structurelle volontairement non mappee.
+    # Elle sert uniquement de frontiere pour terminer
+    # correctement le bloc maitrise_objectifs.
+    # -------------------------------------------------
+
+    QuestionPattern(
+        pattern_id="evaluation_competences_detaillee",
+        texts=(
+            "Evaluez vos competences",
+        ),
+        prefix_words=3,
+        window_lines=2,
+    ),
+
+    # -------------------------------------------------
     # Attentes / sujets
     # -------------------------------------------------
 
