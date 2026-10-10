@@ -1,10 +1,13 @@
 ﻿# utils/business_model_2026.py
 
+# utils/business_model_2026.py
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import (
     List,
+    Literal,
     Optional,
     Sequence,
     Tuple,
@@ -16,6 +19,11 @@ from utils.question_extraction_contracts import (
     MasteryObjectivesResult,
     VerbatimsResult,
 )
+
+from utils.question_registry import (
+    normalize_question_text,
+)
+
 from utils.question_result_consolidator import (
     OccurrenceExtractionResult,
 )
@@ -139,6 +147,54 @@ class MasteryBusinessOccurrence2026:
     source: MasteryObjectivesResult
 
 
+MasteryAggregationMethod2026 = Literal[
+    "missing",
+    "single_source",
+    "weighted_same_objectives",
+    "multiple_unmerged",
+]
+
+
+@dataclass(frozen=True)
+class MasteryBusinessSummary2026:
+    """
+    Synthese metier des occurrences de maitrise.
+
+    Les occurrences sources restent toujours conservees
+    separement dans maitrise_objectifs.
+
+    Regles :
+    - aucune occurrence -> missing ;
+    - une occurrence -> single_source ;
+    - plusieurs occurrences avec les memes objectifs
+      et des effectifs fiables -> moyenne ponderee ;
+    - sinon -> multiple_unmerged.
+
+    Une moyenne ponderee utilise uniquement les notes
+    globales source et les effectifs source.
+
+    Aucune moyenne des notes par objectif n'est faite.
+    """
+
+    aggregation_method: MasteryAggregationMethod2026
+    value_sur_10: Optional[Number]
+
+    source_notes: Tuple[
+        Optional[Number],
+        ...,
+    ]
+
+    respondent_counts: Tuple[
+        Optional[Number],
+        ...,
+    ]
+
+    source_occurrence_ids: Tuple[
+        str,
+        ...,
+    ]
+
+
 # =====================================================
 # Modele public preformation
 # =====================================================
@@ -174,6 +230,8 @@ class PreformationBusinessModel2026:
         MasteryBusinessOccurrence2026,
         ...,
     ]
+
+    maitrise_summary: MasteryBusinessSummary2026
 
     issues: Tuple[
         str,
@@ -495,6 +553,196 @@ def _build_mastery_occurrences(
     )
 
 
+def _mastery_respondent_count(
+    occurrence: MasteryBusinessOccurrence2026,
+) -> Optional[Number]:
+    """
+    Deduit le nombre de repondants d'une occurrence
+    uniquement si tous les objectifs disposent
+    d'effectifs complets et donnent le meme total.
+
+    Si les totaux divergent ou sont incomplets,
+    retourne None.
+    """
+
+    objectives = occurrence.source.par_objectif
+
+    if not objectives:
+        return None
+
+    totals: List[Number] = []
+
+    for objective in objectives:
+
+        levels = objective.levels
+
+        values = (
+            levels.totalement.nb_votants,
+            levels.en_partie.nb_votants,
+            levels.insuffisamment.nb_votants,
+            levels.pas_du_tout.nb_votants,
+        )
+
+        if any(
+            value is None
+            for value in values
+        ):
+            return None
+
+        total = sum(
+            value
+            for value in values
+            if value is not None
+        )
+
+        totals.append(total)
+
+    unique_totals = set(totals)
+
+    if len(unique_totals) != 1:
+        return None
+
+    return totals[0]
+
+
+def _mastery_objective_signature(
+    occurrence: MasteryBusinessOccurrence2026,
+) -> Tuple[str, ...]:
+    """
+    Construit une signature uniquement pour comparer
+    les ensembles d'objectifs entre occurrences.
+
+    Le texte source conserve dans l'occurrence
+    n'est jamais modifie.
+    """
+
+    return tuple(
+        sorted(
+            normalize_question_text(
+                objective.objectif_label
+            )
+            for objective
+            in occurrence.source.par_objectif
+        )
+    )
+
+
+def _build_mastery_summary(
+    occurrences: Sequence[
+        MasteryBusinessOccurrence2026
+    ],
+) -> MasteryBusinessSummary2026:
+    """
+    Produit la synthese metier des occurrences
+    de maitrise.
+
+    La moyenne ponderee n'est autorisee que si :
+    - plusieurs occurrences existent ;
+    - elles evaluent exactement le meme ensemble
+      d'objectifs ;
+    - chaque occurrence possede un nombre de
+      repondants fiable ;
+    - chaque occurrence possede une note globale ;
+    - le nombre total de repondants est > 0.
+    """
+
+    source_notes = tuple(
+        occurrence.note_globale_sur_10
+        for occurrence in occurrences
+    )
+
+    respondent_counts = tuple(
+        _mastery_respondent_count(occurrence)
+        for occurrence in occurrences
+    )
+
+    occurrence_ids = tuple(
+        occurrence.occurrence_id
+        for occurrence in occurrences
+    )
+
+    if not occurrences:
+        return MasteryBusinessSummary2026(
+            aggregation_method="missing",
+            value_sur_10=None,
+            source_notes=(),
+            respondent_counts=(),
+            source_occurrence_ids=(),
+        )
+
+    if len(occurrences) == 1:
+        return MasteryBusinessSummary2026(
+            aggregation_method="single_source",
+            value_sur_10=source_notes[0],
+            source_notes=source_notes,
+            respondent_counts=respondent_counts,
+            source_occurrence_ids=occurrence_ids,
+        )
+
+    signatures = tuple(
+        _mastery_objective_signature(occurrence)
+        for occurrence in occurrences
+    )
+
+    same_objectives = all(
+        signature == signatures[0]
+        for signature in signatures[1:]
+    )
+
+    complete_notes = all(
+        note is not None
+        for note in source_notes
+    )
+
+    complete_counts = all(
+        count is not None
+        for count in respondent_counts
+    )
+
+    if (
+        same_objectives
+        and complete_notes
+        and complete_counts
+    ):
+        weighted_sum = 0.0
+        total_respondents = 0.0
+
+        for note, count in zip(
+            source_notes,
+            respondent_counts,
+        ):
+            if note is None or count is None:
+                break
+
+            weighted_sum += (
+                float(note)
+                * float(count)
+            )
+            total_respondents += float(count)
+
+        if total_respondents > 0:
+            weighted_value = (
+                weighted_sum
+                / total_respondents
+            )
+
+            return MasteryBusinessSummary2026(
+                aggregation_method="weighted_same_objectives",
+                value_sur_10=weighted_value,
+                source_notes=source_notes,
+                respondent_counts=respondent_counts,
+                source_occurrence_ids=occurrence_ids,
+            )
+
+    return MasteryBusinessSummary2026(
+        aggregation_method="multiple_unmerged",
+        value_sur_10=None,
+        source_notes=source_notes,
+        respondent_counts=respondent_counts,
+        source_occurrence_ids=occurrence_ids,
+    )
+
+
 # =====================================================
 # API publique
 # =====================================================
@@ -516,7 +764,9 @@ def build_preformation_business_model_2026(
     - modifie pas les extracteurs ;
     - n'appelle aucun LLM ;
     - ne reconstruit aucune donnee manquante ;
-    - ne moyenne pas plusieurs occurrences ;
+    - conserve toujours les occurrences sources ;
+    - ne calcule une synthese ponderee que lorsque
+      les objectifs sont identiques et les effectifs fiables ;
     - ne connait aucune colonne Excel.
     """
 
@@ -574,6 +824,19 @@ def build_preformation_business_model_2026(
         report_url=report_url_clean,
     )
 
+    mastery_occurrences = (
+        _build_mastery_occurrences(
+            occurrences,
+            issues,
+        )
+    )
+
+    mastery_summary = (
+        _build_mastery_summary(
+            mastery_occurrences
+        )
+    )
+
     return PreformationBusinessModel2026(
         metadata=metadata,
         volonte_suivi=(
@@ -589,10 +852,10 @@ def build_preformation_business_model_2026(
             )
         ),
         maitrise_objectifs=(
-            _build_mastery_occurrences(
-                occurrences,
-                issues,
-            )
+            mastery_occurrences
+        ),
+        maitrise_summary=(
+            mastery_summary
         ),
         issues=tuple(
             issues
