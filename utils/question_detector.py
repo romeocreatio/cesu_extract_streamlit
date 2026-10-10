@@ -464,6 +464,373 @@ PRE_FORMATION_PATTERNS_2026: Tuple[
     ),
 )
 
+# =====================================================
+# Profil A CHAUD 2026
+# =====================================================
+#
+# Profil structurel commun aux rapports CESU 83 2026.
+#
+# Toutes les questions sont conservees ici, y compris
+# celles qui ne seront pas exportees dans le Google Sheet.
+#
+# Elles servent de frontieres fiables entre les blocs.
+#
+# Les business_key restent dans question_registry.py.
+# =====================================================
+
+A_CHAUD_PATTERNS_2026: Tuple[
+    QuestionPattern,
+    ...,
+] = (
+
+    # -------------------------------------------------
+    # Accueil / programme / attentes
+    # -------------------------------------------------
+
+    QuestionPattern(
+        pattern_id="accueil",
+        texts=(
+            "L'accueil en formation a été",
+        ),
+        prefix_words=3,
+    ),
+
+    QuestionPattern(
+        pattern_id="programme_objectifs_annonces",
+        texts=(
+            (
+                "En début de session, est-ce que le programme "
+                "et les objectifs de la formation ont été"
+            ),
+        ),
+        prefix_words=4,
+        window_lines=5,
+    ),
+
+    QuestionPattern(
+        pattern_id="formation_profitable",
+        texts=(
+            (
+                "Pensez-vous que cette formation "
+                "vous a été profitable"
+            ),
+        ),
+        prefix_words=3,
+    ),
+
+    QuestionPattern(
+        pattern_id="satisfaction_contenu",
+        texts=(
+            (
+                "Par rapport à l'idée que vous aviez "
+                "du contenu, vous êtes plutôt"
+            ),
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="conforme_programme",
+        texts=(
+            (
+                "La formation a-t-elle été conforme "
+                "au programme"
+            ),
+        ),
+        prefix_words=3,
+    ),
+
+    QuestionPattern(
+        pattern_id="conforme_attentes",
+        texts=(
+            (
+                "La formation a-t-elle été conforme "
+                "à vos attentes"
+            ),
+        ),
+        prefix_words=8,
+    ),
+
+    QuestionPattern(
+        pattern_id="themes_non_traites",
+        texts=(
+            (
+                "Y a-t-il des thèmes indispensables "
+                "qui n'ont pas été traités"
+            ),
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="apport_connaissances",
+        texts=(
+            (
+                "La formation vous a-t-elle apporté "
+                "des connaissances"
+            ),
+        ),
+        prefix_words=4,
+    ),
+
+    # -------------------------------------------------
+    # Maitrise des objectifs
+    # -------------------------------------------------
+
+    QuestionPattern(
+        pattern_id="maitrise_objectifs",
+        texts=(
+            (
+                "À ce jour, considérez-vous maîtriser "
+                "les objectifs du programme"
+            ),
+            (
+                "À ce jour, considérez-vous maîtriser "
+                "les objectifs de la formation"
+            ),
+            (
+                "Considérez-vous maîtriser les objectifs "
+                "du programme"
+            ),
+            (
+                "Considérez-vous maîtriser les objectifs "
+                "de la formation"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=5,
+    ),
+
+    # Frontiere structurelle indispensable pour ne pas
+    # laisser le bloc maitrise absorber la suite.
+    QuestionPattern(
+        pattern_id="evaluation_competences_detaillee",
+        texts=(
+            "Evaluez vos competences",
+            "Evaluer vos competences",
+        ),
+        prefix_words=3,
+        window_lines=2,
+    ),
+
+    # -------------------------------------------------
+    # Transfert en pratique
+    # -------------------------------------------------
+
+    QuestionPattern(
+        pattern_id="transfert_pratique",
+        texts=(
+            (
+                "Pensez-vous que vous pourrez transférer "
+                "les acquis de la formation dans votre "
+                "pratique professionnelle"
+            ),
+        ),
+        prefix_words=4,
+        window_lines=5,
+    ),
+
+    QuestionPattern(
+        pattern_id="elements_mise_en_pratique",
+        texts=(
+            (
+                "Quels éléments allez-vous pouvoir mettre "
+                "en pratique dans votre vie professionnelle"
+            ),
+        ),
+        prefix_words=4,
+        window_lines=5,
+    ),
+
+    # -------------------------------------------------
+    # Experience de formation
+    # -------------------------------------------------
+
+    QuestionPattern(
+        pattern_id="ambiance",
+        texts=(
+            (
+                "Vous avez trouvé que l'ambiance "
+                "de la formation était"
+            ),
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="niveau_formation",
+        texts=(
+            "Le niveau de formation vous a paru",
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="echanges_professionnels",
+        texts=(
+            (
+                "Durant la formation, les échanges "
+                "professionnels vous ont semblé"
+            ),
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="enchainement_sujets",
+        texts=(
+            (
+                "L'enchaînement des sujets a été "
+                "en général"
+            ),
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="duree_formation",
+        texts=(
+            "La durée de la formation est à votre avis",
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="ennui",
+        texts=(
+            "Durant la formation, vous êtes-vous ennuyé",
+        ),
+        prefix_words=4,
+    ),
+
+    # -------------------------------------------------
+    # Evaluation des formateurs
+    # -------------------------------------------------
+
+    QuestionPattern(
+        pattern_id="formateurs_maitrise_sujet",
+        texts=(
+            (
+                "Les formateurs intervenants maîtrisent-t-ils "
+                "le sujet et illustrent-t-ils leurs propos"
+            ),
+            (
+                "Les formateurs / intervenants maîtrisent-t-ils "
+                "le sujet et illustrent-t-ils leurs propos"
+            ),
+        ),
+        prefix_words=4,
+        window_lines=5,
+    ),
+
+    QuestionPattern(
+        pattern_id="formateurs_adaptation_pedagogie",
+        texts=(
+            (
+                "Les formateurs intervenants ont-ils su "
+                "adapter leur pédagogie au groupe et favoriser"
+            ),
+            (
+                "Les formateurs / Intervenants ont-ils su "
+                "adapter leur pédagogie au groupe et favoriser"
+            ),
+        ),
+        prefix_words=4,
+        window_lines=5,
+    ),
+
+    QuestionPattern(
+        pattern_id="formateurs_explications_claires",
+        texts=(
+            (
+                "Les explications des formateurs "
+                "étaient-elles claires et structurées"
+            ),
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="appreciation_intervenants",
+        texts=(
+            (
+                "En quelques mots, quelles sont les "
+                "appréciations que vous donneriez "
+                "sur le-les intervenant-s"
+            ),
+        ),
+        prefix_words=4,
+        window_lines=5,
+    ),
+
+    # -------------------------------------------------
+    # Organisation / bilan
+    # -------------------------------------------------
+
+    QuestionPattern(
+        pattern_id="conditions_materielles",
+        texts=(
+            (
+                "Les conditions matérielles et "
+                "l'organisation de la formation ont été"
+            ),
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="points_forts",
+        texts=(
+            "Quels sont les points forts de la formation",
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="points_ajuster",
+        texts=(
+            (
+                "Quels sont les points à ajuster "
+                "sur cette formation"
+            ),
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="recommandation",
+        texts=(
+            (
+                "Est-ce que vous recommanderiez cette "
+                "formation à un-e collègue"
+            ),
+        ),
+        prefix_words=4,
+    ),
+
+    QuestionPattern(
+        pattern_id="note_impression",
+        texts=(
+            (
+                "Donnez une note de 0 à 10 sur "
+                "l'impression que vous laisse cette formation"
+            ),
+        ),
+        prefix_words=4,
+        window_lines=5,
+    ),
+
+    QuestionPattern(
+        pattern_id="suggestions_complement",
+        texts=(
+            (
+                "Vos suggestions de complément "
+                "à cette formation"
+            ),
+        ),
+        prefix_words=3,
+    ),
+)
 
 # =====================================================
 # Accès aux profils
@@ -482,6 +849,9 @@ def patterns_for_section(
 
     if section_key == "pre_formation":
         return PRE_FORMATION_PATTERNS_2026
+
+    if section_key == "a_chaud":
+        return A_CHAUD_PATTERNS_2026
 
     return ()
 
