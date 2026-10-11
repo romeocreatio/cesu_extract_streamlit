@@ -181,6 +181,8 @@ RÈGLES ABSOLUES
 - Une idée répétée par plusieurs répondants peut être présentée comme
   récurrente ou fréquemment citée.
 - Ne pas transformer une opinion isolée en tendance générale.
+- Ne pas utiliser de formulation absolue (par exemple : unanimement, tous, aucune difficulté majeure) sauf si les verbatims permettent de l'établir explicitement.
+- Lorsqu'un groupe contient à la fois des réponses sans remarque et des suggestions concrètes, restituer les deux informations sans minimiser les suggestions.
 - Ne pas donner de pourcentage si aucun pourcentage n'est fourni.
 - Ne pas utiliser de liste à puces dans les synthèses.
 - Ne pas ajouter de conseil ou de recommandation qui ne figure pas
