@@ -21,9 +21,17 @@ from utils.question_deterministic_payload_adapter import (
     DeterministicTypedPayload,
     deterministic_extraction_to_typed_payload,
     mastery_layout_to_typed_payload,
+    score_layout_to_typed_payload,
+    verbatim_layout_to_typed_payload,
 )
 from utils.mastery_layout_extractor import (
     extract_mastery_layout,
+)
+from utils.score_layout_extractor import (
+    extract_score_layout,
+)
+from utils.verbatim_layout_extractor import (
+    extract_verbatim_layout,
 )
 from utils.question_extraction_tasks import (
     QuestionExtractionTask,
@@ -343,15 +351,18 @@ class QuestionHybridExtractor:
         )
 
         # -----------------------------------------
-        # Sécurité multi-chunk
+        # Securite multi-chunk
         #
-        # Le moteur géométrique travaille sur le
-        # bloc entier. L'utiliser pour chaque chunk
-        # du même bloc reproduirait plusieurs fois
-        # la même distribution.
+        # Les extracteurs geometriques structures
+        # travaillent sur le bloc entier.
+        # Les verbatims font exception car ils sont
+        # filtres explicitement par bornes de chunk.
         # -----------------------------------------
 
-        if task.is_multi_chunk_occurrence:
+        if (
+            task.is_multi_chunk_occurrence
+            and task.data_kind != "verbatims"
+        ):
 
             return self._fallback(
                 task,
@@ -369,7 +380,11 @@ class QuestionHybridExtractor:
             task.data_kind
             not in DISTRIBUTION_DATA_KINDS
             and task.data_kind
-            != "maitrise_objectifs"
+            not in {
+                "maitrise_objectifs",
+                "score_sur_10",
+                "verbatims",
+            }
         ):
 
             return self._fallback(
@@ -406,6 +421,90 @@ class QuestionHybridExtractor:
         # -----------------------------------------
         # Extraction locale
         # -----------------------------------------
+
+        if (
+            task.data_kind
+            == "verbatims"
+        ):
+
+            verbatim_extraction = (
+                extract_verbatim_layout(
+                    self.pdf_bytes,
+                    context,
+                    block_text=block.text,
+                    chunk_start_char=(
+                        task.start_char
+                    ),
+                    chunk_end_char=(
+                        task.end_char
+                    ),
+                )
+            )
+
+            if verbatim_extraction.succeeded:
+
+                return verbatim_layout_to_typed_payload(
+                    verbatim_extraction,
+                    expected_data_kind=(
+                        task.data_kind
+                    ),
+                )
+
+            reason = (
+                verbatim_extraction.status
+            )
+
+            if verbatim_extraction.issues:
+
+                reason += (
+                    ": "
+                    + ", ".join(
+                        verbatim_extraction.issues
+                    )
+                )
+
+            return self._fallback(
+                task,
+                reason=reason,
+            )
+
+        if (
+            task.data_kind
+            == "score_sur_10"
+        ):
+
+            score_extraction = (
+                extract_score_layout(
+                    context
+                )
+            )
+
+            if score_extraction.succeeded:
+
+                return score_layout_to_typed_payload(
+                    score_extraction,
+                    expected_data_kind=(
+                        task.data_kind
+                    ),
+                )
+
+            reason = (
+                score_extraction.status
+            )
+
+            if score_extraction.issues:
+
+                reason += (
+                    ": "
+                    + ", ".join(
+                        score_extraction.issues
+                    )
+                )
+
+            return self._fallback(
+                task,
+                reason=reason,
+            )
 
         if (
             task.data_kind

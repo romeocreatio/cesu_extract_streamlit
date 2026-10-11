@@ -150,7 +150,25 @@ class VerbatimsResult:
 
 
 # =====================================================
-# Maîtrise des objectifs
+# Note sur 10
+# =====================================================
+
+@dataclass(frozen=True)
+class ScoreSur10Result:
+    """
+    Note globale explicitement affichee dans la source.
+
+    Exemple :
+        9.4 / 10
+
+    Aucune moyenne ni reconstruction n'est effectuee.
+    """
+
+    note_sur_10: Optional[Number]
+
+
+# =====================================================
+# Maitrise des objectifs
 # =====================================================
 
 @dataclass(frozen=True)
@@ -237,6 +255,7 @@ QuestionExtractionPayload = Union[
     DistributionCategoriesResult,
     DistributionYesNoResult,
     VerbatimsResult,
+    ScoreSur10Result,
     MasteryObjectivesResult,
 ]
 
@@ -249,6 +268,7 @@ SUPPORTED_DATA_KINDS: Tuple[
     "distribution_categories",
     "distribution_yes_no",
     "verbatims",
+    "score_sur_10",
     "maitrise_objectifs",
 )
 
@@ -560,7 +580,28 @@ def validate_verbatims(
 
 
 # =====================================================
-# Validation maîtrise des objectifs
+# Validation note sur 10
+# =====================================================
+
+def validate_score_sur_10(
+    result: ScoreSur10Result,
+) -> None:
+    """
+    Valide la note explicitement extraite.
+
+    Aucune valeur n'est calculee ou reconstruite.
+    """
+
+    _validate_optional_number(
+        result.note_sur_10,
+        "score_sur_10.note_sur_10",
+        minimum=0,
+        maximum=10,
+    )
+
+
+# =====================================================
+# Validation maitrise des objectifs
 # =====================================================
 
 def _validate_mastery_level_value(
@@ -756,6 +797,23 @@ def validate_extraction_payload(
             )
 
         validate_verbatims(
+            payload
+        )
+
+        return
+
+    if data_kind == "score_sur_10":
+
+        if not isinstance(
+            payload,
+            ScoreSur10Result,
+        ):
+            raise TypeError(
+                "score_sur_10 attend "
+                "ScoreSur10Result."
+            )
+
+        validate_score_sur_10(
             payload
         )
 

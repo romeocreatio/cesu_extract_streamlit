@@ -21,6 +21,7 @@ from utils.question_extraction_contracts import (
     MasteryObjectivesResult,
     Number,
     QuestionExtractionPayload,
+    ScoreSur10Result,
     VerbatimsResult,
     validate_extraction_payload,
 )
@@ -644,7 +645,57 @@ def _parse_verbatims(
 
 
 # =====================================================
-# Maîtrise des objectifs
+# Note sur 10
+# =====================================================
+
+def _parse_score_sur_10(
+    raw: object,
+) -> ScoreSur10Result:
+    """
+    Parse une note globale explicitement affichee
+    sur une echelle de 0 a 10.
+
+    Format attendu :
+        {
+            "note_sur_10": 9.4
+        }
+
+    Aucune moyenne ni reconstruction.
+    """
+
+    obj = _require_mapping(
+        raw,
+        "score_sur_10",
+    )
+
+    _require_exact_keys(
+        obj,
+        required={
+            "note_sur_10",
+        },
+        optional=set(),
+        field_name="score_sur_10",
+    )
+
+    result = ScoreSur10Result(
+        note_sur_10=(
+            _parse_optional_number(
+                obj["note_sur_10"],
+                "score_sur_10.note_sur_10",
+            )
+        ),
+    )
+
+    validate_extraction_payload(
+        "score_sur_10",
+        result,
+    )
+
+    return result
+
+
+# =====================================================
+# Maitrise des objectifs
 # =====================================================
 
 def _parse_mastery_level_value(
@@ -938,6 +989,13 @@ def parse_extraction_payload(
     if data_kind == "verbatims":
         return _parse_verbatims(
             raw
+        )
+
+    if data_kind == "score_sur_10":
+        return (
+            _parse_score_sur_10(
+                raw
+            )
         )
 
     if data_kind == "maitrise_objectifs":

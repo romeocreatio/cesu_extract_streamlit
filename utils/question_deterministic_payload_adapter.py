@@ -17,6 +17,12 @@ from utils.mastery_layout_extractor import (
 from utils.question_extraction_contracts import (
     QuestionExtractionPayload,
 )
+from utils.score_layout_extractor import (
+    ScoreLayoutExtraction,
+)
+from utils.verbatim_layout_extractor import (
+    VerbatimLayoutExtraction,
+)
 from utils.question_payload_parser import (
     parse_extraction_payload,
 )
@@ -233,6 +239,130 @@ def deterministic_extraction_to_typed_payload(
     return DeterministicTypedPayload(
         expected_data_kind=(
             extraction.expected_data_kind
+        ),
+        detected_data_kind=(
+            detected_data_kind
+        ),
+        payload=payload,
+        method=extraction.method,
+    )
+
+
+# =====================================================
+# Score sur 10 -> typed payload
+# =====================================================
+
+def score_layout_to_typed_payload(
+    extraction: ScoreLayoutExtraction,
+    *,
+    expected_data_kind: Optional[
+        DataKind
+    ],
+) -> DeterministicTypedPayload:
+    """
+    Convertit une extraction geometrique fiable
+    d'une note sur 10 en payload interne type.
+
+    Aucun calcul, aucune moyenne et aucun arrondi
+    ne sont appliques ici.
+    """
+
+    if not isinstance(
+        extraction,
+        ScoreLayoutExtraction,
+    ):
+        raise TypeError(
+            "extraction doit etre un "
+            "ScoreLayoutExtraction."
+        )
+
+    if not extraction.succeeded:
+        raise ValueError(
+            "Impossible d'adapter une extraction "
+            "score non reussie : "
+            f"{extraction.status!r}."
+        )
+
+    if extraction.raw_payload is None:
+        raise ValueError(
+            "Une extraction score reussie doit "
+            "contenir un raw_payload."
+        )
+
+    detected_data_kind: DataKind = (
+        "score_sur_10"
+    )
+
+    payload = parse_extraction_payload(
+        detected_data_kind,
+        extraction.raw_payload,
+    )
+
+    return DeterministicTypedPayload(
+        expected_data_kind=(
+            expected_data_kind
+        ),
+        detected_data_kind=(
+            detected_data_kind
+        ),
+        payload=payload,
+        method=extraction.method,
+    )
+
+
+# =====================================================
+# Verbatims -> typed payload
+# =====================================================
+
+def verbatim_layout_to_typed_payload(
+    extraction: VerbatimLayoutExtraction,
+    *,
+    expected_data_kind: Optional[
+        DataKind
+    ],
+) -> DeterministicTypedPayload:
+    """
+    Convertit une extraction deterministe de
+    verbatims en payload interne type et valide.
+
+    Les textes sont transmis tels quels :
+    aucune reformulation, normalisation ou synthese.
+    """
+
+    if not isinstance(
+        extraction,
+        VerbatimLayoutExtraction,
+    ):
+        raise TypeError(
+            "extraction doit etre un "
+            "VerbatimLayoutExtraction."
+        )
+
+    if not extraction.succeeded:
+        raise ValueError(
+            "Impossible d'adapter une extraction "
+            "verbatim non reussie : "
+            f"{extraction.status!r}."
+        )
+
+    if extraction.raw_payload is None:
+        raise ValueError(
+            "Une extraction verbatim reussie doit "
+            "contenir un raw_payload."
+        )
+
+    detected_data_kind: DataKind = (
+        "verbatims"
+    )
+
+    payload = parse_extraction_payload(
+        detected_data_kind,
+        extraction.raw_payload,
+    )
+
+    return DeterministicTypedPayload(
+        expected_data_kind=(
+            expected_data_kind
         ),
         detected_data_kind=(
             detected_data_kind
