@@ -15,6 +15,9 @@ from utils.a_chaud_business_model_2026 import (
     ProfitableBusinessOccurrence2026,
     SatisfactionBusinessOccurrence2026,
 )
+from utils.a_chaud_verbatim_synthesis_2026 import (
+    VerbatimSynthesis2026,
+)
 
 
 Number = Union[int, float]
@@ -423,6 +426,9 @@ def build_output_row_2026(
     a_chaud_model: Optional[
         AChaudBusinessModel2026
     ] = None,
+    a_chaud_synthesis: Optional[
+        VerbatimSynthesis2026
+    ] = None,
 ) -> OutputRow2026:
     """
     Transforme le modele metier 2026 en une ligne
@@ -459,6 +465,18 @@ def build_output_row_2026(
         raise TypeError(
             "a_chaud_model doit etre un "
             "AChaudBusinessModel2026 ou None."
+        )
+
+    if (
+        a_chaud_synthesis is not None
+        and not isinstance(
+            a_chaud_synthesis,
+            VerbatimSynthesis2026,
+        )
+    ):
+        raise TypeError(
+            "a_chaud_synthesis doit etre un "
+            "VerbatimSynthesis2026 ou None."
         )
 
     row: OutputRow2026 = {
@@ -559,13 +577,40 @@ def build_output_row_2026(
         )
 
     # -------------------------------------------------
-    # 9 -> 12
+    # 9 -> 12. Syntheses des verbatims A chaud
     #
-    # Les verbatims fiables sont deja presents dans
-    # a_chaud_model, mais leur regle de synthese
-    # finale n'est pas encore validee.
-    # Les cellules restent donc vides.
+    # La synthese est produite en amont.
+    # Aucun appel OpenAI n'est effectue ici.
     # -------------------------------------------------
+
+    if a_chaud_synthesis is not None:
+
+        row[
+            "Points forts"
+        ] = (
+            a_chaud_synthesis.points_forts
+        )
+
+        row[
+            "Points faibles"
+        ] = (
+            a_chaud_synthesis.points_faibles
+        )
+
+        row[
+            (
+                "Sujets non traité à reboucler avec formateur "
+                "ou nouvelle formation ou attendu"
+            )
+        ] = (
+            a_chaud_synthesis.sujets_reboucler
+        )
+
+        row[
+            "Evaluation formateurs"
+        ] = (
+            a_chaud_synthesis.evaluation_formateurs
+        )
 
     # -------------------------------------------------
     # 14 -> 20
