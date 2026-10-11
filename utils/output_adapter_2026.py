@@ -9,6 +9,12 @@ from utils.business_model_2026 import (
     PreformationBusinessModel2026,
     VolonteBusinessOccurrence2026,
 )
+from utils.a_chaud_business_model_2026 import (
+    AChaudBusinessModel2026,
+    AChaudMasteryBusinessSummary2026,
+    ProfitableBusinessOccurrence2026,
+    SatisfactionBusinessOccurrence2026,
+)
 
 
 Number = Union[int, float]
@@ -243,11 +249,180 @@ def _format_mastery_summary(
 
 
 # =====================================================
+# A chaud
+# =====================================================
+
+def _format_percentage(
+    value: Optional[Number],
+) -> str:
+    """
+    Formate un pourcentage source.
+
+    Aucun recalcul ni reequilibrage.
+    """
+
+    if value is None:
+        return ""
+
+    return (
+        f"{_format_number_fr(value)} %"
+    )
+
+
+def _format_profitable_occurrence(
+    occurrence: ProfitableBusinessOccurrence2026,
+) -> str:
+    """
+    Affiche uniquement le pourcentage OUI source.
+    """
+
+    return _format_percentage(
+        occurrence.oui_pct
+    )
+
+
+def _format_profitable(
+    model: AChaudBusinessModel2026,
+) -> str:
+    values = tuple(
+        _format_profitable_occurrence(
+            occurrence
+        )
+        for occurrence
+        in model.formation_profitable
+    )
+
+    values = tuple(
+        value
+        for value in values
+        if value
+    )
+
+    return " ; ".join(
+        values
+    )
+
+
+def _format_satisfaction_occurrence(
+    occurrence: SatisfactionBusinessOccurrence2026,
+) -> str:
+    """
+    Affiche le pourcentage satisfait CESU 83 :
+
+        Tres satisfait-e + Satisfait-e
+
+    Cette valeur est deja calculee dans le modele
+    metier a partir des pourcentages source.
+    """
+
+    return _format_percentage(
+        occurrence.satisfait_pct
+    )
+
+
+def _format_satisfaction(
+    model: AChaudBusinessModel2026,
+) -> str:
+    values = tuple(
+        _format_satisfaction_occurrence(
+            occurrence
+        )
+        for occurrence
+        in model.satisfaction_contenu
+    )
+
+    values = tuple(
+        value
+        for value in values
+        if value
+    )
+
+    return " ; ".join(
+        values
+    )
+
+
+def _format_a_chaud_note(
+    model: AChaudBusinessModel2026,
+) -> str:
+    values = tuple(
+        _format_score_sur_10(
+            occurrence.note_sur_10
+        )
+        for occurrence
+        in model.note_globale
+        if occurrence.note_sur_10
+        is not None
+    )
+
+    return " ; ".join(
+        values
+    )
+
+
+def _format_a_chaud_mastery_summary(
+    summary: AChaudMasteryBusinessSummary2026,
+) -> str:
+    """
+    Meme logique d'affichage que la preformation.
+
+    Aucun calcul metier n'est effectue ici.
+    """
+
+    method = (
+        summary.aggregation_method
+    )
+
+    if method == "missing":
+        return ""
+
+    if method == "single_source":
+
+        if summary.value_sur_10 is None:
+            return ""
+
+        return _format_score_sur_10(
+            summary.value_sur_10
+        )
+
+    if method == "weighted_same_objectives":
+
+        if summary.value_sur_10 is None:
+            return ""
+
+        return (
+            f"{_format_score_sur_10(summary.value_sur_10)} "
+            "(moy. pondérée)"
+        )
+
+    if method == "multiple_unmerged":
+
+        values = tuple(
+            _format_score_sur_10(note)
+            for note in summary.source_notes
+            if note is not None
+        )
+
+        return " ; ".join(
+            values
+        )
+
+    raise ValueError(
+        "Methode d'agregation de maitrise "
+        f"A chaud inconnue : {method!r}"
+    )
+
+
+# =====================================================
 # Construction de la ligne finale
 # =====================================================
 
 def build_output_row_2026(
     model: PreformationBusinessModel2026,
+    *,
+    a_chaud_model: Optional[
+        AChaudBusinessModel2026
+    ] = None,
 ) -> OutputRow2026:
     """
     Transforme le modele metier 2026 en une ligne
@@ -272,6 +447,18 @@ def build_output_row_2026(
         raise TypeError(
             "model doit etre un "
             "PreformationBusinessModel2026."
+        )
+
+    if (
+        a_chaud_model is not None
+        and not isinstance(
+            a_chaud_model,
+            AChaudBusinessModel2026,
+        )
+    ):
+        raise TypeError(
+            "a_chaud_model doit etre un "
+            "AChaudBusinessModel2026 ou None."
         )
 
     row: OutputRow2026 = {
@@ -328,11 +515,63 @@ def build_output_row_2026(
     )
 
     # -------------------------------------------------
-    # 6 -> 20
+    # 6. Formation profitable
+    # -------------------------------------------------
+
+    if a_chaud_model is not None:
+
+        row[
+            "formation Profitable"
+        ] = _format_profitable(
+            a_chaud_model
+        )
+
+        # ---------------------------------------------
+        # 7. Satisfaction du contenu
+        # ---------------------------------------------
+
+        row[
+            "Satisfaction du contenu"
+        ] = _format_satisfaction(
+            a_chaud_model
+        )
+
+        # ---------------------------------------------
+        # 8. Note /10 a chaud
+        # ---------------------------------------------
+
+        row[
+            "Note /10 à chaud"
+        ] = _format_a_chaud_note(
+            a_chaud_model
+        )
+
+        # ---------------------------------------------
+        # 13. Autoanalyse competence
+        # ---------------------------------------------
+
+        row[
+            "Autoanalyse compétence"
+        ] = (
+            _format_a_chaud_mastery_summary(
+                a_chaud_model.maitrise_summary
+            )
+        )
+
+    # -------------------------------------------------
+    # 9 -> 12
+    #
+    # Les verbatims fiables sont deja presents dans
+    # a_chaud_model, mais leur regle de synthese
+    # finale n'est pas encore validee.
+    # Les cellules restent donc vides.
+    # -------------------------------------------------
+
+    # -------------------------------------------------
+    # 14 -> 20
     #
     # Pas encore branches dans le nouveau pipeline
     # metier 2026.
-    # Ils restent volontairement vides.
     # -------------------------------------------------
 
     # -------------------------------------------------
