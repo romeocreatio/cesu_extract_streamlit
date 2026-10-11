@@ -167,6 +167,29 @@ class ScoreSur10Result:
     note_sur_10: Optional[Number]
 
 
+
+# =====================================================
+# Report metric
+# =====================================================
+
+@dataclass(frozen=True)
+class ReportMetricResult:
+    """
+    Metrique explicitement affichee dans le rapport.
+
+    Pour la progression 2026, la source peut par
+    exemple afficher :
+
+        +1.25 / 10
+
+    Aucun calcul, aucune comparaison entre notes
+    et aucune reconstruction ne sont effectues ici.
+    """
+
+    value_sur_10: Optional[Number]
+
+
+
 # =====================================================
 # Maitrise des objectifs
 # =====================================================
@@ -256,6 +279,7 @@ QuestionExtractionPayload = Union[
     DistributionYesNoResult,
     VerbatimsResult,
     ScoreSur10Result,
+    ReportMetricResult,
     MasteryObjectivesResult,
 ]
 
@@ -269,6 +293,7 @@ SUPPORTED_DATA_KINDS: Tuple[
     "distribution_yes_no",
     "verbatims",
     "score_sur_10",
+    "report_metric",
     "maitrise_objectifs",
 )
 
@@ -600,6 +625,32 @@ def validate_score_sur_10(
     )
 
 
+
+# =====================================================
+# Validation report metric
+# =====================================================
+
+def validate_report_metric(
+    result: ReportMetricResult,
+) -> None:
+    """
+    Valide une metrique source exprimee sur 10.
+
+    Une progression peut etre positive, nulle
+    ou negative.
+
+    Aucune valeur n'est calculee ici.
+    """
+
+    _validate_optional_number(
+        result.value_sur_10,
+        "report_metric.value_sur_10",
+        minimum=-10,
+        maximum=10,
+    )
+
+
+
 # =====================================================
 # Validation maitrise des objectifs
 # =====================================================
@@ -814,6 +865,23 @@ def validate_extraction_payload(
             )
 
         validate_score_sur_10(
+            payload
+        )
+
+        return
+
+    if data_kind == "report_metric":
+
+        if not isinstance(
+            payload,
+            ReportMetricResult,
+        ):
+            raise TypeError(
+                "report_metric attend "
+                "ReportMetricResult."
+            )
+
+        validate_report_metric(
             payload
         )
 

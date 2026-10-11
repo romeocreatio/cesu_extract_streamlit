@@ -21,6 +21,7 @@ from utils.question_extraction_contracts import (
     MasteryObjectivesResult,
     Number,
     QuestionExtractionPayload,
+    ReportMetricResult,
     ScoreSur10Result,
     VerbatimsResult,
     validate_extraction_payload,
@@ -694,6 +695,59 @@ def _parse_score_sur_10(
     return result
 
 
+
+# =====================================================
+# Report metric
+# =====================================================
+
+def _parse_report_metric(
+    raw: object,
+) -> ReportMetricResult:
+    """
+    Parse une metrique explicitement affichee
+    sur une echelle de 10.
+
+    Format attendu :
+
+        {
+            "value_sur_10": 1.25
+        }
+
+    Aucun calcul ni reconstruction.
+    """
+
+    obj = _require_mapping(
+        raw,
+        "report_metric",
+    )
+
+    _require_exact_keys(
+        obj,
+        required={
+            "value_sur_10",
+        },
+        optional=set(),
+        field_name="report_metric",
+    )
+
+    result = ReportMetricResult(
+        value_sur_10=(
+            _parse_optional_number(
+                obj["value_sur_10"],
+                "report_metric.value_sur_10",
+            )
+        ),
+    )
+
+    validate_extraction_payload(
+        "report_metric",
+        result,
+    )
+
+    return result
+
+
+
 # =====================================================
 # Maitrise des objectifs
 # =====================================================
@@ -994,6 +1048,13 @@ def parse_extraction_payload(
     if data_kind == "score_sur_10":
         return (
             _parse_score_sur_10(
+                raw
+            )
+        )
+
+    if data_kind == "report_metric":
+        return (
+            _parse_report_metric(
                 raw
             )
         )
