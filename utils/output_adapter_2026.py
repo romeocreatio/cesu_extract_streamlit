@@ -18,6 +18,9 @@ from utils.a_chaud_business_model_2026 import (
 from utils.a_chaud_verbatim_synthesis_2026 import (
     VerbatimSynthesis2026,
 )
+from utils.preformation_verbatim_synthesis_2026 import (
+    PreformationVerbatimSynthesis2026,
+)
 
 
 Number = Union[int, float]
@@ -423,6 +426,9 @@ def _format_a_chaud_mastery_summary(
 def build_output_row_2026(
     model: PreformationBusinessModel2026,
     *,
+    preformation_synthesis: Optional[
+        PreformationVerbatimSynthesis2026
+    ] = None,
     a_chaud_model: Optional[
         AChaudBusinessModel2026
     ] = None,
@@ -453,6 +459,18 @@ def build_output_row_2026(
         raise TypeError(
             "model doit etre un "
             "PreformationBusinessModel2026."
+        )
+
+    if (
+        preformation_synthesis is not None
+        and not isinstance(
+            preformation_synthesis,
+            PreformationVerbatimSynthesis2026,
+        )
+    ):
+        raise TypeError(
+            "preformation_synthesis doit etre un "
+            "PreformationVerbatimSynthesis2026 ou None."
         )
 
     if (
@@ -513,14 +531,16 @@ def build_output_row_2026(
     # -------------------------------------------------
     # 4. Demande particuliere de sujet a aborder
     #
-    # Verbatims fiables disponibles dans le modele,
-    # mais regle de synthese finale pas encore validee.
-    # Donc cellule volontairement vide.
+    # La synthese est produite en amont.
+    # Aucun appel OpenAI n'est effectue ici.
     # -------------------------------------------------
 
-    row[
-        "Demande particulière de sujet à aborder"
-    ] = ""
+    if preformation_synthesis is not None:
+        row[
+            "Demande particulière de sujet à aborder"
+        ] = (
+            preformation_synthesis.sujets_a_aborder
+        )
 
     # -------------------------------------------------
     # 5. AutoEvaluation competence pre-formation
