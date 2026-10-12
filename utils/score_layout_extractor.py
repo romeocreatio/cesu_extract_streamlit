@@ -10,6 +10,9 @@ from typing import (
     Tuple,
 )
 
+from utils.distribution_layout_extractor import (
+    normalize_layout_text,
+)
 from utils.question_layout_context import (
     QuestionLayoutContext,
 )
@@ -97,6 +100,33 @@ def _parse_number(
     return number
 
 
+def _prompt_explicitly_defines_score_sur_10(
+    context: QuestionLayoutContext,
+) -> bool:
+    """
+    Retourne True uniquement lorsque le libelle
+    de la question definit explicitement une note
+    sur une echelle de 10.
+
+    Cette preuve peut servir lorsque le PDF omet
+    graphiquement le denominateur "10" du score,
+    mais conserve un numerateur fiable associe
+    au slash.
+
+    Aucun denominateur n'est deduit d'un autre nombre
+    present dans la page.
+    """
+
+    normalized = normalize_layout_text(
+        context.matched_prompt
+    )
+
+    return (
+        "note sur 10" in normalized
+        or "note de 0 a 10" in normalized
+    )
+
+
 def extract_score_layout(
     context: QuestionLayoutContext,
 ) -> ScoreLayoutExtraction:
@@ -128,6 +158,12 @@ def extract_score_layout(
         )
 
     candidates = []
+
+    # Seconde preuve possible :
+    # numérateur géométriquement lié au slash,
+    # lorsque le prompt définit explicitement
+    # une échelle sur 10.
+    prompt_scale_candidates = []
 
     for slash_line in context.lines:
 
@@ -212,6 +248,17 @@ def extract_score_layout(
                 numerator_word,
                 numerator_value,
             ) = numerator_candidates[0]
+
+            prompt_scale_candidates.append(
+                (
+                    numerator_value,
+                    slash_line.page_number,
+                    numerator_word.x0,
+                    numerator_word.y0,
+                    slash_word.x0,
+                    slash_word.y0,
+                )
+            )
 
             # -------------------------------------
             # Dénominateur :
@@ -298,10 +345,56 @@ def extract_score_layout(
             )
 
     # ---------------------------------------------
-    # Aucun triplet fiable
+    # Aucun triplet numérateur / 10 complet
+    #
+    # Seconde preuve autorisée uniquement si :
+    # - la question définit explicitement /10 ;
+    # - un numérateur est géométriquement lié
+    #   à un slash ;
+    # - une seule valeur distincte est présente.
     # ---------------------------------------------
 
     if not candidates:
+
+        if (
+            _prompt_explicitly_defines_score_sur_10(
+                context
+            )
+            and prompt_scale_candidates
+        ):
+
+            prompt_scale_values = {
+                candidate[0]
+                for candidate
+                in prompt_scale_candidates
+            }
+
+            if len(
+                prompt_scale_values
+            ) == 1:
+
+                return ScoreLayoutExtraction(
+                    status="success",
+                    note_sur_10=(
+                        prompt_scale_candidates[0][0]
+                    ),
+                    issues=(),
+                    method=(
+                        "pymupdf_score_prompt_scale_layout"
+                    ),
+                )
+
+            return ScoreLayoutExtraction(
+                status="unreliable",
+                note_sur_10=None,
+                issues=(
+                    "multiple_prompt_scale_score_values_detected",
+                ),
+                method=(
+                    "pymupdf_score_prompt_scale_layout"
+                ),
+            )
+
         return ScoreLayoutExtraction(
             status="not_detected",
             note_sur_10=None,
