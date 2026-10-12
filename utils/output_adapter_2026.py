@@ -28,6 +28,9 @@ from utils.a_froid_business_model_2026 import (
     AFroidMasteryBusinessSummary2026,
     AFroidProgressionBusinessMetric2026,
 )
+from utils.a_froid_verbatim_synthesis_2026 import (
+    AFroidVerbatimSynthesis2026,
+)
 
 
 Number = Union[int, float]
@@ -583,6 +586,9 @@ def build_output_row_2026(
     a_froid_model: Optional[
         AFroidBusinessModel2026
     ] = None,
+    a_froid_synthesis: Optional[
+        AFroidVerbatimSynthesis2026
+    ] = None,
 ) -> OutputRow2026:
     """
     Transforme le modele metier 2026 en une ligne
@@ -655,6 +661,18 @@ def build_output_row_2026(
         raise TypeError(
             "a_froid_model doit etre un "
             "AFroidBusinessModel2026 ou None."
+        )
+
+    if (
+        a_froid_synthesis is not None
+        and not isinstance(
+            a_froid_synthesis,
+            AFroidVerbatimSynthesis2026,
+        )
+    ):
+        raise TypeError(
+            "a_froid_synthesis doit etre un "
+            "AFroidVerbatimSynthesis2026 ou None."
         )
 
     row: OutputRow2026 = {
@@ -833,10 +851,18 @@ def build_output_row_2026(
             )
 
     # -------------------------------------------------
-    # 17 -> 20
+    # 17. Avec le recul
+    # -------------------------------------------------
+
+    if a_froid_synthesis is not None:
+        row[
+            "Avec le recul "
+        ] = a_froid_synthesis.avec_recul
+
+    # -------------------------------------------------
+    # 18 -> 20
     #
     # Pas encore branches :
-    # - synthese A froid ;
     # - questionnaire intervenants ;
     # - synthese finale.
     # -------------------------------------------------
