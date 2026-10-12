@@ -23,6 +23,7 @@ from utils.question_extraction_contracts import (
     QuestionExtractionPayload,
     ReportMetricResult,
     ScoreSur10Result,
+    TextResult,
     VerbatimsResult,
     validate_extraction_payload,
 )
@@ -1005,6 +1006,69 @@ def _parse_mastery_objectives(
 
 
 # =====================================================
+# Texte libre
+# =====================================================
+
+def _parse_text(
+    raw: object,
+) -> TextResult:
+    """
+    Parse un texte libre sans modifier son contenu.
+
+    Format brut attendu :
+
+        {
+            "text": "..."
+        }
+
+    Une chaîne vide est autorisée.
+    """
+
+    obj = _require_mapping(
+        raw,
+        "texte",
+    )
+
+    actual_keys = set(
+        obj.keys()
+    )
+
+    expected_keys = {
+        "text",
+    }
+
+    if actual_keys != expected_keys:
+        raise ValueError(
+            "texte doit contenir exactement "
+            "la clé 'text'. "
+            f"Reçu : {sorted(actual_keys)!r}"
+        )
+
+    value = obj[
+        "text"
+    ]
+
+    if not isinstance(
+        value,
+        str,
+    ):
+        raise TypeError(
+            "texte.text doit être une chaîne."
+        )
+
+    result = TextResult(
+        text=value,
+    )
+
+    validate_extraction_payload(
+        "texte",
+        result,
+    )
+
+    return result
+
+
+# =====================================================
 # Entrée publique
 # =====================================================
 
@@ -1042,6 +1106,11 @@ def parse_extraction_payload(
 
     if data_kind == "verbatims":
         return _parse_verbatims(
+            raw
+        )
+
+    if data_kind == "texte":
+        return _parse_text(
             raw
         )
 

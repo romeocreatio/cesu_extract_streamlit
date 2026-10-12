@@ -150,6 +150,29 @@ class VerbatimsResult:
 
 
 # =====================================================
+# Texte libre
+# =====================================================
+
+@dataclass(frozen=True)
+class TextResult:
+    """
+    Texte libre extrait exactement de la source.
+
+    Ce contrat ne réalise :
+    - aucune reformulation ;
+    - aucune correction ;
+    - aucune normalisation ;
+    - aucune synthèse.
+
+    Une chaîne vide est autorisée lorsque la source
+    ne contient aucune réponse après le libellé de
+    la question.
+    """
+
+    text: str
+
+
+# =====================================================
 # Note sur 10
 # =====================================================
 
@@ -278,6 +301,7 @@ QuestionExtractionPayload = Union[
     DistributionCategoriesResult,
     DistributionYesNoResult,
     VerbatimsResult,
+    TextResult,
     ScoreSur10Result,
     ReportMetricResult,
     MasteryObjectivesResult,
@@ -292,6 +316,7 @@ SUPPORTED_DATA_KINDS: Tuple[
     "distribution_categories",
     "distribution_yes_no",
     "verbatims",
+    "texte",
     "score_sur_10",
     "report_metric",
     "maitrise_objectifs",
@@ -850,6 +875,27 @@ def validate_extraction_payload(
         validate_verbatims(
             payload
         )
+
+        return
+
+    if data_kind == "texte":
+
+        if not isinstance(
+            payload,
+            TextResult,
+        ):
+            raise TypeError(
+                "texte attend TextResult."
+            )
+
+        if not isinstance(
+            payload.text,
+            str,
+        ):
+            raise TypeError(
+                "TextResult.text doit être "
+                "une chaîne."
+            )
 
         return
 
