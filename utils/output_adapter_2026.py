@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Dict, Optional, Tuple, Union
 
 from utils.business_model_2026 import (
@@ -20,6 +22,11 @@ from utils.a_chaud_verbatim_synthesis_2026 import (
 )
 from utils.preformation_verbatim_synthesis_2026 import (
     PreformationVerbatimSynthesis2026,
+)
+from utils.a_froid_business_model_2026 import (
+    AFroidBusinessModel2026,
+    AFroidMasteryBusinessSummary2026,
+    AFroidProgressionBusinessMetric2026,
 )
 
 
@@ -420,6 +427,144 @@ def _format_a_chaud_mastery_summary(
 
 
 # =====================================================
+# A froid
+# =====================================================
+
+def _format_a_froid_note(
+    model: AFroidBusinessModel2026,
+) -> str:
+    """
+    Affiche uniquement les notes globales A froid
+    explicitement presentes dans la source.
+
+    Plusieurs occurrences legitimes restent separees.
+    """
+
+    values = tuple(
+        _format_score_sur_10(
+            occurrence.note_sur_10
+        )
+        for occurrence
+        in model.note_globale
+        if occurrence.note_sur_10 is not None
+    )
+
+    return " ; ".join(
+        values
+    )
+
+
+def _format_a_froid_mastery_summary(
+    summary: AFroidMasteryBusinessSummary2026,
+) -> str:
+    """
+    Formatage conservateur de la maitrise A froid.
+
+    Aucun calcul metier n'est effectue ici.
+    """
+
+    method = (
+        summary.aggregation_method
+    )
+
+    if method == "missing":
+        return ""
+
+    if method == "single_source":
+
+        if summary.value_sur_10 is None:
+            return ""
+
+        return _format_score_sur_10(
+            summary.value_sur_10
+        )
+
+    if method == "weighted_same_objectives":
+
+        if summary.value_sur_10 is None:
+            return ""
+
+        return (
+            f"{_format_score_sur_10(summary.value_sur_10)} "
+            "(moy. pondérée)"
+        )
+
+    if method == "multiple_unmerged":
+
+        values = tuple(
+            _format_score_sur_10(note)
+            for note in summary.source_notes
+            if note is not None
+        )
+
+        return " ; ".join(
+            values
+        )
+
+    raise ValueError(
+        "Methode d'agregation de maitrise "
+        f"A froid inconnue : {method!r}"
+    )
+
+
+def _format_progression_metric(
+    metric: AFroidProgressionBusinessMetric2026,
+) -> str:
+    """
+    Formate la progression explicitement extraite
+    du rapport.
+
+    Le signe positif est conserve :
+        +2,8/10
+
+    Le signe negatif est conserve :
+        -2,8/10
+
+    Pour une valeur nulle, le texte source est consulte
+    afin de conserver +0 ou -0 lorsqu'il est explicite.
+    Aucun calcul entre notes n'est effectue.
+    """
+
+    value = float(
+        metric.value_sur_10
+    )
+
+    if value > 0:
+        sign = "+"
+
+    elif value < 0:
+        sign = "-"
+
+    else:
+        source_text = (
+            metric.source_text
+            or ""
+        )
+
+        if re.search(
+            r"-\s*0(?:[.,]0+)?\s*/\s*10",
+            source_text,
+        ):
+            sign = "-"
+
+        elif re.search(
+            r"\+\s*0(?:[.,]0+)?\s*/\s*10",
+            source_text,
+        ):
+            sign = "+"
+
+        else:
+            sign = ""
+
+    return (
+        f"{sign}"
+        f"{_format_number_fr(abs(value))}"
+        "/10"
+    )
+
+
+
+# =====================================================
 # Construction de la ligne finale
 # =====================================================
 
@@ -434,6 +579,9 @@ def build_output_row_2026(
     ] = None,
     a_chaud_synthesis: Optional[
         VerbatimSynthesis2026
+    ] = None,
+    a_froid_model: Optional[
+        AFroidBusinessModel2026
     ] = None,
 ) -> OutputRow2026:
     """
@@ -495,6 +643,18 @@ def build_output_row_2026(
         raise TypeError(
             "a_chaud_synthesis doit etre un "
             "VerbatimSynthesis2026 ou None."
+        )
+
+    if (
+        a_froid_model is not None
+        and not isinstance(
+            a_froid_model,
+            AFroidBusinessModel2026,
+        )
+    ):
+        raise TypeError(
+            "a_froid_model doit etre un "
+            "AFroidBusinessModel2026 ou None."
         )
 
     row: OutputRow2026 = {
@@ -633,10 +793,52 @@ def build_output_row_2026(
         )
 
     # -------------------------------------------------
-    # 14 -> 20
+    # 14 -> 16. A froid
+    # -------------------------------------------------
+
+    if a_froid_model is not None:
+
+        # ---------------------------------------------
+        # 14. Note /10 a froid
+        # ---------------------------------------------
+
+        row[
+            "Note /10 à froid"
+        ] = _format_a_froid_note(
+            a_froid_model
+        )
+
+        # ---------------------------------------------
+        # 15. Auto-analyse progression
+        # ---------------------------------------------
+
+        row[
+            "Auto-analyse progression"
+        ] = _format_a_froid_mastery_summary(
+            a_froid_model.maitrise_summary
+        )
+
+        # ---------------------------------------------
+        # 16. Impact / Progression des competences
+        # ---------------------------------------------
+
+        if (
+            a_froid_model.progression_competences
+            is not None
+        ):
+            row[
+                "Impact / Progression des compétences"
+            ] = _format_progression_metric(
+                a_froid_model.progression_competences
+            )
+
+    # -------------------------------------------------
+    # 17 -> 20
     #
-    # Pas encore branches dans le nouveau pipeline
-    # metier 2026.
+    # Pas encore branches :
+    # - synthese A froid ;
+    # - questionnaire intervenants ;
+    # - synthese finale.
     # -------------------------------------------------
 
     # -------------------------------------------------
