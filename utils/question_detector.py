@@ -55,6 +55,13 @@ class QuestionPattern:
     # le libellé peut être éclaté par Digiforma.
     window_lines: int = 6
 
+    # Pour certains intitulés très courts, impose que
+    # le préfixe caractéristique commence réellement
+    # la ligne source.
+    #
+    # False conserve le comportement historique.
+    require_line_start: bool = False
+
 
 @dataclass(frozen=True)
 class QuestionCandidate:
@@ -834,6 +841,199 @@ A_CHAUD_PATTERNS_2026: Tuple[
 
 # =====================================================
 # Accès aux profils
+
+# =====================================================
+# Profil structurel 2026 — section A FROID
+#
+# Toutes les questions sont conservees ici, y compris
+# celles qui ne seront pas exportees dans le Google Sheet.
+#
+# Elles servent de frontieres fiables entre les blocs.
+#
+# Les business_key restent dans question_registry.py.
+# =====================================================
+
+A_FROID_PATTERNS_2026: Tuple[
+    QuestionPattern,
+    ...,
+] = (
+
+    QuestionPattern(
+        pattern_id="mise_en_pratique",
+        texts=(
+            (
+                "Avez vous pu mettre en pratique les connaissances "
+                "competences acquises"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+
+    QuestionPattern(
+        pattern_id="application_concrete",
+        texts=(
+            (
+                "L'application concrete des connaissances "
+                "competences vous parait elle"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+
+    QuestionPattern(
+        pattern_id="maitrise_objectifs",
+        texts=(
+            (
+                "A ce jour considerez vous maitriser "
+                "les objectifs du programme"
+            ),
+            (
+                "A ce jour considerez vous maitriser "
+                "les objectifs de la formation"
+            ),
+            (
+                "Considerez vous maitriser "
+                "les objectifs du programme"
+            ),
+            (
+                "Considerez vous maitriser "
+                "les objectifs de la formation"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+
+    QuestionPattern(
+        pattern_id="partage_collegues",
+        texts=(
+            (
+                "Avez vous partage les connaissances acquises lors "
+                "de la formation avec vos collegues ou membres "
+                "de votre equipe"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+
+    QuestionPattern(
+        pattern_id="changements_positifs",
+        texts=(
+            (
+                "Avez vous constate des changements positifs dans "
+                "les resultats de votre travail depuis la "
+                "participation a la formation"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+
+    QuestionPattern(
+        pattern_id="indicateurs_concrets",
+        texts=(
+            (
+                "Pouvez vous identifier des indicateurs concrets "
+                "qui demontrent l efficacite de la formation sur "
+                "votre performance ou celle de votre equipe"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+
+    QuestionPattern(
+        pattern_id="utilisation_quotidienne",
+        texts=(
+            (
+                "Est ce que vous utilisez au quotidien dans votre "
+                "environnement de travail les nouveaux savoirs "
+                "competences ou comportements acquis lors "
+                "de la formation"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+
+    QuestionPattern(
+        pattern_id="exemple_specifique",
+        texts=(
+            (
+                "Pouvez vous citer un exemple specifique ou vous "
+                "avez utilise les competences acquises pendant "
+                "la formation pour resoudre un probleme ou "
+                "ameliorer une situation dans votre environnement "
+                "professionnel"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+
+    QuestionPattern(
+        pattern_id="influence_pratique",
+        texts=(
+            (
+                "Comment la formation a t elle influence votre "
+                "approche ou vos methodes de travail dans votre "
+                "role de professionnel"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+
+    QuestionPattern(
+        pattern_id="elements_utiles",
+        texts=(
+            (
+                "Quels sont avec le recul les elements "
+                "les plus utiles de la formation"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+
+    QuestionPattern(
+        pattern_id="prolongements",
+        texts=(
+            (
+                "Quels pourraient etre les prolongements "
+                "necessaires a la formation"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+
+    QuestionPattern(
+        pattern_id="autres_commentaires",
+        texts=(
+            "Autres commentaires",
+        ),
+        prefix_words=2,
+        window_lines=20,
+        require_line_start=True,
+    ),
+
+    QuestionPattern(
+        pattern_id="note_finale",
+        texts=(
+            (
+                "Quelle note sur 10 donneriez vous "
+                "a cette formation"
+            ),
+        ),
+        prefix_words=3,
+        window_lines=20,
+    ),
+)
+
 # =====================================================
 
 def patterns_for_section(
@@ -843,8 +1043,10 @@ def patterns_for_section(
     Retourne le profil structurel disponible
     pour une section.
 
-    Pour l'instant, seule la préformation 2026
-    est activée dans cette nouvelle brique.
+    Profils structurels 2026 actuellement disponibles :
+    - préformation ;
+    - À chaud ;
+    - À froid.
     """
 
     if section_key == "pre_formation":
@@ -852,6 +1054,9 @@ def patterns_for_section(
 
     if section_key == "a_chaud":
         return A_CHAUD_PATTERNS_2026
+
+    if section_key == "a_froid":
+        return A_FROID_PATTERNS_2026
 
     return ()
 
@@ -939,6 +1144,7 @@ def _line_contains_prompt_prefix(
     line_text: str,
     prompt_text: str,
     prefix_words: int,
+    require_line_start: bool = False,
 ) -> bool:
     """
     Vérifie que les premiers mots caractéristiques
@@ -968,6 +1174,12 @@ def _line_contains_prompt_prefix(
     )
 
     prefix = prompt_tokens[:count]
+
+    if require_line_start:
+        return (
+            line_tokens[:len(prefix)]
+            == prefix
+        )
 
     return _tokens_in_order(
         text_tokens=line_tokens,
@@ -1004,6 +1216,7 @@ def _matches_prompt_at(
     prompt_text: str,
     prefix_words: int,
     window_lines: int,
+    require_line_start: bool = False,
 ) -> bool:
     """
     Vérifie qu'un prompt commence probablement
@@ -1025,6 +1238,7 @@ def _matches_prompt_at(
         line_text=record.text,
         prompt_text=prompt_text,
         prefix_words=prefix_words,
+        require_line_start=require_line_start,
     ):
         return False
 
@@ -1177,6 +1391,9 @@ def _find_raw_matches(
                     prompt_text=prompt_text,
                     prefix_words=pattern.prefix_words,
                     window_lines=pattern.window_lines,
+                    require_line_start=(
+                        pattern.require_line_start
+                    ),
                 ):
                     matched_prompt = prompt_text
                     break
