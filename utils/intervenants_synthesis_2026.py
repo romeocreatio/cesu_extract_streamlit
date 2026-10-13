@@ -493,9 +493,40 @@ RÈGLES COMMUNES AUX DEUX COLONNES
   avec une formulation neutre telle que
   "un retour signale..." ou "une remarque mentionne...".
 - Ne pas utiliser de liste à puces.
-- Maximum deux phrases par champ.
+- Produire UNE SEULE PHRASE par champ.
+- Regrouper les éléments avec des virgules ou des
+  points-virgules plutôt qu'avec plusieurs phrases.
+- Rester synthétique : ne pas reprendre successivement
+  chaque commentaire source.
+- Si problematiques_remontees n'est pas vide, commencer
+  EXACTEMENT par :
+  "Les problématiques signalées concernent "
+- Si adaptations_programme n'est pas vide, commencer
+  EXACTEMENT par :
+  "Les adaptations documentées concernent "
+- Ne jamais écrire les mots ou expressions interdits,
+  même comme simple déterminant dans une phrase :
+  "certains", "certaines", "d'autres",
+  "quelques réponses", "plusieurs répondants",
+  "plusieurs retours", "fréquemment", "récurrent",
+  "majoritairement", "principalement", "surtout",
+  "unanimement", "systématiquement".
 - Une chaîne vide est autorisée et préférable lorsqu'il
   n'existe aucune information pertinente pour le champ.
+
+CONTROLE LEXICAL OBLIGATOIRE AVANT REPONSE
+
+Relire les deux valeurs avant de produire le JSON.
+
+Vérifier qu'elles ne contiennent PAS :
+"certains", "certaines", "d'autres",
+"quelques réponses", "plusieurs répondants",
+"plusieurs retours", "fréquemment", "récurrent",
+"majoritairement", "principalement", "surtout",
+"unanimement", "systématiquement".
+
+Si l'un de ces mots apparaît, réécrire la phrase
+avant de répondre.
 
 FORMAT DE SORTIE
 
@@ -776,9 +807,39 @@ RÈGLES DE RÉDACTION
 - aucune fréquence inventée ;
 - aucune hiérarchisation ;
 - aucun conseil ;
-- maximum deux phrases par champ ;
+- UNE SEULE PHRASE par champ ;
+- regrouper les éléments avec des points-virgules ;
+- ne pas détailler chaque commentaire séparément ;
+- pour problematiques_remontees, commencer exactement
+  par "Les problématiques signalées concernent "
+  si le champ n'est pas vide ;
+- pour adaptations_programme, commencer exactement
+  par "Les adaptations documentées concernent "
+  si le champ n'est pas vide ;
+- INTERDICTION LEXICALE ABSOLUE :
+  ne jamais écrire "certains", "certaines", "d'autres",
+  "quelques réponses", "plusieurs répondants",
+  "plusieurs retours", "fréquemment", "récurrent",
+  "majoritairement", "principalement", "surtout",
+  "unanimement" ou "systématiquement" ;
 - aucune liste à puces ;
 - ne rien inventer.
+
+FORMAT IMPÉRATIF
+
+Chaque valeur doit être une synthèse compacte en UNE
+SEULE PHRASE. Ne pas produire une succession de phrases.
+
+Avant de répondre, rechercher explicitement dans les
+deux valeurs les mots ou expressions :
+"certains", "certaines", "d'autres",
+"quelques réponses", "plusieurs répondants",
+"plusieurs retours", "fréquemment", "récurrent",
+"majoritairement", "principalement", "surtout",
+"unanimement", "systématiquement".
+
+Si l'un apparaît, le supprimer en reformulant de façon
+impersonnelle.
 
 Retourner exclusivement :
 
