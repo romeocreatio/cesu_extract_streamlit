@@ -165,10 +165,58 @@ def append_json_to_google_sheet(
             "Elle doit contenir les noms de colonnes."
         )
 
-    row_values: List[str] = []
-    for h in headers:
-        val = json_excel.get(h.strip())
-        row_values.append(_coerce_cell_value(val))
+    normalized_payload: Dict[str, Any] = {}
+
+    for key, value in json_excel.items():
+        normalized_key = key.strip()
+
+        if normalized_key in normalized_payload:
+            raise RuntimeError(
+                "Le JSON structuré contient plusieurs colonnes "
+                "identiques après normalisation : "
+                f"{normalized_key!r}."
+            )
+
+        normalized_payload[normalized_key] = value
+
+    normalized_headers = [
+        h.strip()
+        for h in headers
+    ]
+
+    if len(normalized_headers) != len(
+        set(normalized_headers)
+    ):
+        raise RuntimeError(
+            "La première ligne du Google Sheets contient "
+            "des en-têtes en double après normalisation."
+        )
+
+    missing_payload_columns = [
+        key
+        for key in normalized_payload
+        if key not in normalized_headers
+    ]
+
+    if missing_payload_columns:
+        raise RuntimeError(
+            "Colonnes du JSON structuré absentes du "
+            "Google Sheets : "
+            + ", ".join(
+                repr(key)
+                for key in missing_payload_columns
+            )
+        )
+
+    row_values: List[str] = [
+        _coerce_cell_value(
+            normalized_payload.get(
+                h,
+                "",
+            )
+        )
+        for h in normalized_headers
+    ]
 
     ws.append_row(row_values, value_input_option="RAW")
 
