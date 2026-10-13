@@ -31,6 +31,9 @@ from utils.a_froid_business_model_2026 import (
 from utils.a_froid_verbatim_synthesis_2026 import (
     AFroidVerbatimSynthesis2026,
 )
+from utils.intervenants_synthesis_2026 import (
+    IntervenantsSynthesis2026,
+)
 
 
 Number = Union[int, float]
@@ -589,6 +592,9 @@ def build_output_row_2026(
     a_froid_synthesis: Optional[
         AFroidVerbatimSynthesis2026
     ] = None,
+    intervenants_synthesis: Optional[
+        IntervenantsSynthesis2026
+    ] = None,
 ) -> OutputRow2026:
     """
     Transforme le modele metier 2026 en une ligne
@@ -673,6 +679,18 @@ def build_output_row_2026(
         raise TypeError(
             "a_froid_synthesis doit etre un "
             "AFroidVerbatimSynthesis2026 ou None."
+        )
+
+    if (
+        intervenants_synthesis is not None
+        and not isinstance(
+            intervenants_synthesis,
+            IntervenantsSynthesis2026,
+        )
+    ):
+        raise TypeError(
+            "intervenants_synthesis doit être "
+            "IntervenantsSynthesis2026 ou None."
         )
 
     row: OutputRow2026 = {
@@ -860,12 +878,35 @@ def build_output_row_2026(
         ] = a_froid_synthesis.avec_recul
 
     # -------------------------------------------------
-    # 18 -> 20
+    # 18 -> 19. Synthese questionnaire intervenants
     #
-    # Pas encore branches :
-    # - questionnaire intervenants ;
-    # - synthese finale.
+    # La synthese est produite en amont.
+    # Aucun appel OpenAI n'est effectue ici.
     # -------------------------------------------------
+
+    if intervenants_synthesis is not None:
+
+        row[
+            "Problématiques remontées"
+        ] = (
+            intervenants_synthesis
+            .problematiques_remontees
+        )
+
+        row[
+            "Adaptations de programme"
+        ] = (
+            intervenants_synthesis
+            .adaptations_programme
+        )
+
+    # -------------------------------------------------
+    # 20. Synthese
+    #
+    # Pas encore branchee.
+    # -------------------------------------------------
+
+    row["Synthese"] = ""
 
     # -------------------------------------------------
     # 21. Lien du rapport qualite
