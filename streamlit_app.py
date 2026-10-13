@@ -16,6 +16,19 @@ from utils.schema import OutputPayload  # v2.2
 # phase 2
 from utils.convert_v2_to_excel import generate_json_excel
 
+# flux standard 2026
+from utils.report_2026_orchestrator import (
+    orchestrate_report_2026,
+)
+from utils.report_2026_analysis_contract import (
+    build_report_2026_analysis_contract,
+    report_2026_analysis_dumps,
+    report_2026_analysis_loads,
+)
+from utils.report_2026_synthesis_orchestrator import (
+    orchestrate_analysis_2026_syntheses,
+)
+
 # phase 3
 from utils.google_sheets_writer import append_json_to_google_sheet
 
@@ -426,9 +439,11 @@ def build_model_candidates(nom_formation: str, is_large_pdf: bool) -> list[str]:
 
 # Dossiers de travail — compatibles local + Streamlit Cloud
 DIR_JSON_V2 = project_root / "json_v2"
+DIR_JSON_ANALYSIS_2026 = project_root / "json_analysis_2026"
 DIR_JSON_EXCEL = project_root / "json_excel"
 
 DIR_JSON_V2.mkdir(parents=True, exist_ok=True)
+DIR_JSON_ANALYSIS_2026.mkdir(parents=True, exist_ok=True)
 DIR_JSON_EXCEL.mkdir(parents=True, exist_ok=True)
 
 
@@ -437,6 +452,18 @@ def list_json_v2_files():
     if not DIR_JSON_V2.exists():
         return []
     return sorted([p.name for p in DIR_JSON_V2.glob("*.json")])
+
+
+@st.cache_data(ttl=30)
+def list_json_analysis_2026_files():
+    if not DIR_JSON_ANALYSIS_2026.exists():
+        return []
+    return sorted(
+        [
+            p.name
+            for p in DIR_JSON_ANALYSIS_2026.glob("*.json")
+        ]
+    )
 
 
 st.subheader("Phase 1 - Analyse du rapport qualité Digiforma")
@@ -452,6 +479,15 @@ with st.form("meta_form", clear_on_submit=False):
 
     uploaded_pdf = st.file_uploader("Charger le rapport qualité", type=["pdf"])
 
+    report_url = st.text_input(
+        "Lien du rapport qualité (optionnel)",
+        placeholder="https://drive.google.com/...",
+        help=(
+            "Utilisé pour la colonne « Lien du rapport qualité ». "
+            "Laisser vide si le lien n'est pas encore disponible."
+        ),
+    )
+
     submitted = st.form_submit_button(
         "Analyser le rapport",
         use_container_width=True,
@@ -464,6 +500,108 @@ if submitted:
         st.stop()
 
     file_bytes = uploaded_pdf.read()
+
+    is_2026 = bool(
+        re.search(
+            r"\b2026\b",
+            semestre,
+            flags=re.IGNORECASE,
+        )
+    )
+
+    report_identity = (
+        f"{nom_formation} {uploaded_pdf.name}"
+        .lower()
+    )
+
+    is_hemoc_div = (
+        "hémoc" in report_identity
+        or "hemoc" in report_identity
+    )
+
+    if is_2026 and is_hemoc_div:
+        st.warning(
+            "Le traitement Hémoc-DIV 2026 n'est pas encore "
+            "intégré au nouveau moteur standard 2026."
+        )
+        st.stop()
+
+    is_standard_2026 = is_2026
+
+    if is_standard_2026:
+        try:
+            with st.spinner(
+                "Analyse déterministe du rapport 2026 en cours..."
+            ):
+                report_2026 = orchestrate_report_2026(
+                    file_bytes,
+                    formation=nom_formation.strip(),
+                    semestre=semestre.strip(),
+                    report_url=report_url.strip(),
+                    ocr_on_empty=False,
+                )
+
+                contract_2026 = (
+                    build_report_2026_analysis_contract(
+                        report_2026
+                    )
+                )
+
+                json_str_2026 = (
+                    report_2026_analysis_dumps(
+                        contract_2026
+                    )
+                )
+
+            safe_name = (
+                f"{_safe_filename(nom_formation)}_"
+                f"{_safe_filename(semestre)}.json"
+            )
+
+            path_analysis_2026 = (
+                DIR_JSON_ANALYSIS_2026
+                / safe_name
+            )
+
+            path_analysis_2026.parent.mkdir(
+                parents=True,
+                exist_ok=True,
+            )
+
+            path_analysis_2026.write_text(
+                json_str_2026,
+                encoding="utf-8",
+            )
+
+            try:
+                list_json_analysis_2026_files.clear()
+            except Exception:
+                pass
+
+            st.success(
+                "✅ Analyse 2026 réussie. "
+                "Les données déterministes ont été extraites "
+                "et sont prêtes pour la Phase 2."
+            )
+
+            if contract_2026.issues:
+                with st.expander(
+                    "⚠️ Avertissements d'analyse 2026",
+                    expanded=False,
+                ):
+                    for issue in contract_2026.issues:
+                        st.markdown(
+                            f"- {issue}"
+                        )
+
+        except Exception as e:
+            st.error(
+                "L'analyse déterministe 2026 "
+                "n'a pas pu être finalisée."
+            )
+            st.exception(e)
+
+        st.stop()
 
     with st.spinner("Lecture du rapport en cours..."):
         full_text, pages_text, used_ocr = read_pdf_all_text(file_bytes)
@@ -616,11 +754,37 @@ st.markdown("---")
 st.subheader("Phase 2 - Structuration des données")
 
 DIR_JSON_V2.mkdir(parents=True, exist_ok=True)
+DIR_JSON_ANALYSIS_2026.mkdir(parents=True, exist_ok=True)
 DIR_JSON_EXCEL.mkdir(parents=True, exist_ok=True)
 
-files = list_json_v2_files()
+files_2026 = list_json_analysis_2026_files()
+files_historical = list_json_v2_files()
 
-if not files:
+phase2_options = (
+    [
+        f"2026::{name}"
+        for name in files_2026
+    ]
+    + [
+        f"historique::{name}"
+        for name in files_historical
+    ]
+)
+
+
+def _phase2_option_label(value: str) -> str:
+    source, filename = value.split(
+        "::",
+        1,
+    )
+
+    if source == "2026":
+        return f"2026 — {filename}"
+
+    return f"Historique — {filename}"
+
+
+if not phase2_options:
     st.info(
         """
         ℹ️ Aucun fichier d'analyse n'est disponible pour le moment.
@@ -634,18 +798,33 @@ if not files:
         Une fois l'analyse terminée, le fichier sera disponible pour cette étape.
         """
     )
+
 else:
-    with st.form("form_excel", clear_on_submit=False):
-        c1, c2 = st.columns([2, 1])
+    with st.form(
+        "form_excel",
+        clear_on_submit=False,
+    ):
+        c1, c2 = st.columns(
+            [2, 1]
+        )
 
         with c1:
-            selected = st.selectbox("Choisir un fichier d’analyse :", files, index=0)
+            selected_phase2 = st.selectbox(
+                "Choisir un fichier d’analyse :",
+                phase2_options,
+                index=0,
+                format_func=_phase2_option_label,
+            )
 
         with c2:
             demande_as_list = st.toggle(
-                "Sujets en liste",
+                "Sujets en liste (historique)",
                 value=True,
-                help="Si désactivé, une phrase de synthèse sera générée.",
+                help=(
+                    "Ce réglage concerne uniquement "
+                    "l'ancien parcours historique. "
+                    "Il est ignoré pour les rapports 2026."
+                ),
             )
 
         do_transform = st.form_submit_button(
@@ -654,31 +833,140 @@ else:
             type="primary",
         )
 
-    if do_transform and selected:
-        path_v2 = DIR_JSON_V2 / selected
+    if (
+        do_transform
+        and selected_phase2
+    ):
+        source_kind, selected_name = (
+            selected_phase2.split(
+                "::",
+                1,
+            )
+        )
 
-        try:
-            v2_payload = json.loads(path_v2.read_text(encoding="utf-8"))
-        except Exception as e:
-            st.error(f"Impossible de lire le fichier sélectionné : {e}")
-            st.stop()
+        # =============================================
+        # Nouveau parcours standard 2026
+        # =============================================
 
-        with st.spinner("Structuration des données en cours..."):
-            json_excel = generate_json_excel(
-                v2_payload,
-                DEMANDE_AS_LIST=demande_as_list,
+        if source_kind == "2026":
+            path_analysis = (
+                DIR_JSON_ANALYSIS_2026
+                / selected_name
             )
 
-        path_excel = DIR_JSON_EXCEL / selected
-        path_excel.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                contract_2026 = (
+                    report_2026_analysis_loads(
+                        path_analysis.read_text(
+                            encoding="utf-8"
+                        )
+                    )
+                )
+
+            except Exception as e:
+                st.error(
+                    "Impossible de lire ou valider "
+                    "l'analyse 2026 sélectionnée."
+                )
+                st.exception(e)
+                st.stop()
+
+            try:
+                with st.spinner(
+                    "Synthèse des données 2026 en cours..."
+                ):
+                    synthesis_result = (
+                        orchestrate_analysis_2026_syntheses(
+                            contract_2026
+                        )
+                    )
+
+                    json_excel = dict(
+                        synthesis_result.row
+                    )
+
+            except Exception as e:
+                st.error(
+                    "La synthèse 2026 n'a pas pu "
+                    "être finalisée."
+                )
+                st.exception(e)
+                st.stop()
+
+        # =============================================
+        # Parcours historique inchangé
+        # =============================================
+
+        elif source_kind == "historique":
+            path_v2 = (
+                DIR_JSON_V2
+                / selected_name
+            )
+
+            try:
+                v2_payload = json.loads(
+                    path_v2.read_text(
+                        encoding="utf-8"
+                    )
+                )
+
+            except Exception as e:
+                st.error(
+                    "Impossible de lire le fichier "
+                    f"sélectionné : {e}"
+                )
+                st.stop()
+
+            try:
+                with st.spinner(
+                    "Structuration des données en cours..."
+                ):
+                    json_excel = generate_json_excel(
+                        v2_payload,
+                        DEMANDE_AS_LIST=demande_as_list,
+                    )
+
+            except Exception as e:
+                st.error(
+                    "La structuration historique "
+                    "n'a pas pu être finalisée."
+                )
+                st.exception(e)
+                st.stop()
+
+        else:
+            st.error(
+                "Type de fichier d'analyse inconnu."
+            )
+            st.stop()
+
+        # =============================================
+        # Sortie commune vers json_excel
+        # =============================================
+
+        path_excel = (
+            DIR_JSON_EXCEL
+            / selected_name
+        )
+
+        path_excel.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
         path_excel.write_text(
-            json.dumps(json_excel, ensure_ascii=False, indent=2),
+            json.dumps(
+                json_excel,
+                ensure_ascii=False,
+                indent=2,
+            ),
             encoding="utf-8",
         )
 
         st.success(
             "✅ Structuration des données réussie. "
-            "Les données sont prêtes pour l’intégration dans le suivi qualité. "
+            "Les données sont prêtes pour l’intégration "
+            "dans le suivi qualité. "
             "Vous pouvez passer à la Phase 3."
         )
 
