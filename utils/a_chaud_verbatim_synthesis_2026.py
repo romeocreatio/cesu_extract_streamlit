@@ -340,20 +340,28 @@ def parse_verbatim_synthesis_response_2026(
 # Execution injectable
 # =====================================================
 
-def synthesize_a_chaud_verbatims_2026(
-    model: AChaudBusinessModel2026,
+def synthesize_a_chaud_input_2026(
+    synthesis_input: VerbatimSynthesisInput2026,
     *,
     generator: TextGenerator2026,
 ) -> VerbatimSynthesis2026:
     """
-    Execute la synthese via un generateur injectable.
+    Execute la synthese directement depuis un
+    VerbatimSynthesisInput2026 deja construit.
 
-    Cette couche :
-    - ne connait pas OpenAI directement ;
-    - ne connait pas Excel ;
-    - ne modifie pas le business model ;
-    - effectue un seul appel generateur par rapport.
+    Cette fonction permet a la Phase 2 de travailler
+    depuis le JSON intermediaire sans reconstruire
+    le business model ni relire le PDF.
     """
+
+    if not isinstance(
+        synthesis_input,
+        VerbatimSynthesisInput2026,
+    ):
+        raise TypeError(
+            "synthesis_input doit etre un "
+            "VerbatimSynthesisInput2026."
+        )
 
     if not callable(
         generator
@@ -361,12 +369,6 @@ def synthesize_a_chaud_verbatims_2026(
         raise TypeError(
             "generator doit etre appelable."
         )
-
-    synthesis_input = (
-        build_verbatim_synthesis_input_2026(
-            model
-        )
-    )
 
     prompt = (
         build_verbatim_synthesis_prompt_2026(
@@ -382,4 +384,30 @@ def synthesize_a_chaud_verbatims_2026(
         parse_verbatim_synthesis_response_2026(
             response
         )
+    )
+
+
+def synthesize_a_chaud_verbatims_2026(
+    model: AChaudBusinessModel2026,
+    *,
+    generator: TextGenerator2026,
+) -> VerbatimSynthesis2026:
+    """
+    Execute la synthese depuis le business model
+    A chaud 2026.
+
+    Cette fonction conserve l'API existante et delegue
+    maintenant le traitement a la fonction travaillant
+    directement depuis le SynthesisInput2026.
+    """
+
+    synthesis_input = (
+        build_verbatim_synthesis_input_2026(
+            model
+        )
+    )
+
+    return synthesize_a_chaud_input_2026(
+        synthesis_input,
+        generator=generator,
     )

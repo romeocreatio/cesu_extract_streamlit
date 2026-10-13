@@ -344,16 +344,18 @@ def parse_a_froid_verbatim_synthesis_response_2026(
 # Synthese injectable
 # =====================================================
 
-def synthesize_a_froid_verbatims_2026(
-    model: AFroidBusinessModel2026,
+def synthesize_a_froid_input_2026(
+    source: AFroidVerbatimSynthesisInput2026,
     *,
     generator: TextGenerator2026,
 ) -> AFroidVerbatimSynthesis2026:
     """
-    Execute une synthese injectable.
+    Execute la synthese directement depuis une source
+    AFroidVerbatimSynthesisInput2026 deja construite.
 
-    Cette fonction ne connait ni OpenAI,
-    ni Excel, ni Google Sheets.
+    Cette fonction permet a la Phase 2 de travailler
+    depuis le JSON intermediaire sans reconstruire
+    le business model ni relire le PDF.
 
     Un appel generateur est effectue normalement.
 
@@ -363,18 +365,21 @@ def synthesize_a_froid_verbatims_2026(
     Aucun troisieme appel n'est effectue.
     """
 
+    if not isinstance(
+        source,
+        AFroidVerbatimSynthesisInput2026,
+    ):
+        raise TypeError(
+            "source doit etre un "
+            "AFroidVerbatimSynthesisInput2026."
+        )
+
     if not callable(
         generator
     ):
         raise TypeError(
             "generator doit etre callable."
         )
-
-    source = (
-        build_a_froid_verbatim_synthesis_input_2026(
-            model
-        )
-    )
 
     # Aucun appel inutile si aucune donnee source.
     if not source.elements_utiles:
@@ -456,3 +461,29 @@ Aucun texte avant ou après le JSON.
                 corrected_raw
             )
         )
+
+
+def synthesize_a_froid_verbatims_2026(
+    model: AFroidBusinessModel2026,
+    *,
+    generator: TextGenerator2026,
+) -> AFroidVerbatimSynthesis2026:
+    """
+    Execute la synthese depuis le business model
+    A froid 2026.
+
+    Cette fonction conserve l'API existante et delegue
+    maintenant le traitement a la fonction travaillant
+    directement depuis le SynthesisInput2026.
+    """
+
+    source = (
+        build_a_froid_verbatim_synthesis_input_2026(
+            model
+        )
+    )
+
+    return synthesize_a_froid_input_2026(
+        source,
+        generator=generator,
+    )

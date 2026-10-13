@@ -713,40 +713,46 @@ def _has_any_source(
 # Synthèse injectable
 # =====================================================
 
-def synthesize_intervenants_2026(
-    model: IntervenantsBusinessModel2026,
+def synthesize_intervenants_input_2026(
+    source: IntervenantsSynthesisInput2026,
     *,
     generator: TextGenerator2026,
 ) -> IntervenantsSynthesis2026:
     """
-    Produit en un seul appel les colonnes 18 et 19.
+    Produit les colonnes 18 et 19 directement depuis
+    un IntervenantsSynthesisInput2026 deja construit.
 
-    Un appel générateur est effectué normalement.
+    Cette fonction permet a la Phase 2 de travailler
+    depuis le JSON intermediaire sans reconstruire
+    le business model ni relire le PDF.
 
-    Si la première réponse est invalide,
-    un unique second appel correctif est autorisé.
+    Un appel generateur est effectue normalement.
 
-    Aucun troisième appel.
+    Si la premiere reponse est invalide,
+    un unique second appel correctif est autorise.
+
+    Aucun troisieme appel.
     """
+
+    if not isinstance(
+        source,
+        IntervenantsSynthesisInput2026,
+    ):
+        raise TypeError(
+            "source doit etre un "
+            "IntervenantsSynthesisInput2026."
+        )
 
     if not callable(
         generator
     ):
-
         raise TypeError(
             "generator doit être callable."
         )
 
-    source = (
-        build_intervenants_synthesis_input_2026(
-            model
-        )
-    )
-
     if not _has_any_source(
         source
     ):
-
         return IntervenantsSynthesis2026(
             problematiques_remontees="",
             adaptations_programme="",
@@ -763,7 +769,6 @@ def synthesize_intervenants_2026(
     )
 
     try:
-
         return (
             parse_intervenants_synthesis_response_2026(
                 raw
@@ -860,3 +865,29 @@ Aucun texte avant ou après le JSON.
                 corrected_raw
             )
         )
+
+
+def synthesize_intervenants_2026(
+    model: IntervenantsBusinessModel2026,
+    *,
+    generator: TextGenerator2026,
+) -> IntervenantsSynthesis2026:
+    """
+    Produit les syntheses intervenants depuis le
+    business model 2026.
+
+    Cette fonction conserve l'API existante et delegue
+    maintenant le traitement a la fonction travaillant
+    directement depuis le SynthesisInput2026.
+    """
+
+    source = (
+        build_intervenants_synthesis_input_2026(
+            model
+        )
+    )
+
+    return synthesize_intervenants_input_2026(
+        source,
+        generator=generator,
+    )

@@ -259,17 +259,28 @@ def parse_preformation_verbatim_synthesis_response_2026(
 # Synthese injectable
 # =====================================================
 
-def synthesize_preformation_verbatims_2026(
-    model: PreformationBusinessModel2026,
+def synthesize_preformation_input_2026(
+    source: PreformationVerbatimSynthesisInput2026,
     *,
     generator: TextGenerator2026,
 ) -> PreformationVerbatimSynthesis2026:
     """
-    Execute une synthese injectable.
+    Execute la synthese directement depuis une source
+    PreformationVerbatimSynthesisInput2026 deja construite.
 
-    Cette fonction ne connait ni OpenAI,
-    ni Excel, ni Google Sheets.
+    Cette fonction permet notamment a la Phase 2
+    de travailler depuis un JSON intermediaire sans
+    reconstruire le business model ni relire le PDF.
     """
+
+    if not isinstance(
+        source,
+        PreformationVerbatimSynthesisInput2026,
+    ):
+        raise TypeError(
+            "source doit etre un "
+            "PreformationVerbatimSynthesisInput2026."
+        )
 
     if not callable(
         generator
@@ -277,12 +288,6 @@ def synthesize_preformation_verbatims_2026(
         raise TypeError(
             "generator doit etre callable."
         )
-
-    source = (
-        build_preformation_verbatim_synthesis_input_2026(
-            model
-        )
-    )
 
     # Aucun appel inutile si aucune donnee source.
     if not source.sujets_a_aborder:
@@ -304,4 +309,30 @@ def synthesize_preformation_verbatims_2026(
         parse_preformation_verbatim_synthesis_response_2026(
             raw
         )
+    )
+
+
+def synthesize_preformation_verbatims_2026(
+    model: PreformationBusinessModel2026,
+    *,
+    generator: TextGenerator2026,
+) -> PreformationVerbatimSynthesis2026:
+    """
+    Execute une synthese injectable depuis le business
+    model historique 2026.
+
+    Cette fonction conserve l'API existante et delegue
+    maintenant le traitement a la fonction travaillant
+    directement depuis le SynthesisInput2026.
+    """
+
+    source = (
+        build_preformation_verbatim_synthesis_input_2026(
+            model
+        )
+    )
+
+    return synthesize_preformation_input_2026(
+        source,
+        generator=generator,
     )
