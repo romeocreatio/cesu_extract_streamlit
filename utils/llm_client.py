@@ -101,14 +101,28 @@ def call_llm_extract_json(prompt_master: str, full_text: str, meta: dict, model_
         "{{PDF_METADATA}}", json.dumps(meta, ensure_ascii=False)
     )
 
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[
+    request_kwargs = {
+        "model": model,
+        "messages": [
             {"role": "system", "content": system_msg},
             {"role": "user", "content": user_content},
         ],
-        response_format={"type": "json_object"},
-        temperature=0,
+        "response_format": {
+            "type": "json_object",
+        },
+    }
+
+    # GPT-6 Luna n'accepte pas notre temperature=0
+    # historique. Pour cette famille uniquement,
+    # on utilise le mode sans raisonnement et on
+    # laisse la temperature à sa valeur par défaut.
+    if model.startswith("gpt-6-luna"):
+        request_kwargs["reasoning_effort"] = "none"
+    else:
+        request_kwargs["temperature"] = 0
+
+    resp = client.chat.completions.create(
+        **request_kwargs
     )
 
 
