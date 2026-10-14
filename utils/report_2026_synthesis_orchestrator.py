@@ -58,6 +58,15 @@ from utils.intervenants_synthesis_2026 import (
     synthesize_intervenants_2026,
 )
 
+from utils.global_synthesis_2026 import (
+    GlobalSynthesis2026,
+    build_global_synthesis_input_2026,
+    synthesize_global_input_2026,
+)
+from utils.global_synthesis_openai_2026 import (
+    make_global_synthesis_openai_generator_2026,
+)
+
 
 # =====================================================
 # Configuration 2026
@@ -115,6 +124,10 @@ class Report2026SynthesisOrchestrationResult:
 
     intervenants_synthesis: (
         IntervenantsSynthesis2026
+    )
+
+    global_synthesis: (
+        GlobalSynthesis2026
     )
 
     row: OutputRow2026
@@ -269,6 +282,34 @@ def orchestrate_report_2026_syntheses(
         ),
     )
 
+    # -------------------------------------------------
+    # Synthèse globale
+    # -------------------------------------------------
+
+    global_source = (
+        build_global_synthesis_input_2026(
+            row
+        )
+    )
+
+    global_generator = (
+        make_global_synthesis_openai_generator_2026(
+            model_override=model,
+            llm_call=llm_call,
+        )
+    )
+
+    global_synthesis = (
+        synthesize_global_input_2026(
+            global_source,
+            generator=global_generator,
+        )
+    )
+
+    row["Synthese"] = (
+        global_synthesis.synthese
+    )
+
     return Report2026SynthesisOrchestrationResult(
         model=model,
         preformation_synthesis=(
@@ -282,6 +323,9 @@ def orchestrate_report_2026_syntheses(
         ),
         intervenants_synthesis=(
             intervenants_synthesis
+        ),
+        global_synthesis=(
+            global_synthesis
         ),
         row=row,
     )
@@ -489,6 +533,40 @@ def orchestrate_analysis_2026_syntheses(
         intervenants_synthesis.adaptations_programme
     )
 
+    # -------------------------------------------------
+    # Synthèse globale
+    #
+    # Elle travaille uniquement sur les données déjà
+    # validées et les synthèses précédentes.
+    # Aucun verbatim brut n'est relu ici.
+    # -------------------------------------------------
+
+    global_source = (
+        build_global_synthesis_input_2026(
+            row
+        )
+    )
+
+    global_generator = (
+        make_global_synthesis_openai_generator_2026(
+            model_override=model,
+            llm_call=llm_call,
+        )
+    )
+
+    global_synthesis = (
+        synthesize_global_input_2026(
+            global_source,
+            generator=global_generator,
+        )
+    )
+
+    row[
+        "Synthese"
+    ] = (
+        global_synthesis.synthese
+    )
+
     # Les 22 colonnes et leur ordre doivent rester
     # strictement ceux du contrat de sortie 2026.
     if tuple(
@@ -527,6 +605,9 @@ def orchestrate_analysis_2026_syntheses(
         ),
         intervenants_synthesis=(
             intervenants_synthesis
+        ),
+        global_synthesis=(
+            global_synthesis
         ),
         row=row,
     )

@@ -50,6 +50,7 @@ SYNTHESIS_OUTPUT_HEADERS_2026 = (
     "Avec le recul ",
     "Problématiques remontées",
     "Adaptations de programme",
+    "Synthese",
 )
 
 
