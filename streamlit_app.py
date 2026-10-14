@@ -950,6 +950,10 @@ else:
             encoding="utf-8",
         )
 
+        st.session_state[
+            "phase3_ready_name"
+        ] = selected_name
+
         st.success(
             "✅ Synthèse terminée. "
             "Les données sont prêtes à être intégrées dans "
@@ -965,86 +969,246 @@ st.markdown("---")
 # Phase 3 — Intégration Google Sheets
 # =====================================================
 
-st.subheader("Phase 3 — Intégration dans le suivi qualité")
+render_phase_intro(
+    3,
+    "Intégration dans l'Analyse globale des formations",
+    (
+        "Sélectionnez une formation prête puis ajoutez "
+        "ses données au tableau de suivi qualité."
+    ),
+)
 
 json_excel_dir = DIR_JSON_EXCEL
-json_excel_dir.mkdir(parents=True, exist_ok=True)
+json_excel_dir.mkdir(
+    parents=True,
+    exist_ok=True,
+)
 
-colL, colR = st.columns([2, 1])
-
-with colL:
-    mode = st.radio(
-        "Source du fichier structuré",
-        ["Depuis le dossier JSON-Excel", "Charger un fichier .json"],
-        horizontal=True,
-    )
+files = sorted(
+    [
+        f.name
+        for f in json_excel_dir.glob("*.json")
+    ]
+)
 
 json_payload = None
 chosen_name = None
 
-if mode == "Depuis le dossier JSON-Excel":
-    files = sorted([f.name for f in json_excel_dir.glob("*.json")])
-    chosen_name = st.selectbox("Choisir un fichier structuré", ["— Sélectionner —"] + files)
+with st.container(
+    border=True,
+):
+    if files:
+        phase3_options = [""] + files
 
-    if chosen_name and chosen_name != "— Sélectionner —":
-        try:
-            path_json = json_excel_dir / chosen_name
-            json_payload = json.loads(path_json.read_text(encoding="utf-8"))
-            st.success("Fichier chargé avec succès.")
-        except Exception as e:
-            st.error(f"Lecture impossible : {e}")
+        ready_name = st.session_state.get(
+            "phase3_ready_name"
+        )
 
-else:
-    up = st.file_uploader("Charger un fichier structuré", type=["json"])
+        if ready_name in files:
+            default_index = (
+                files.index(
+                    ready_name
+                )
+                + 1
+            )
+        else:
+            default_index = 0
 
-    if up is not None:
-        try:
-            json_payload = json.load(up)
-            chosen_name = getattr(up, "name", "upload.json")
-            st.success("Fichier structuré chargé avec succès.")
-        except Exception as e:
-            st.error(f"Fichier JSON invalide : {e}")
+        chosen_name = st.selectbox(
+            "Formation prête à être intégrée",
+            phase3_options,
+            index=default_index,
+            format_func=lambda value: (
+                "— Sélectionner une formation —"
+                if not value
+                else _friendly_training_label(
+                    value
+                )
+            ),
+        )
 
-if json_payload:
-    st.caption("Aperçu des clés du JSON Excel détectées :")
-    st.code(", ".join(json_payload.keys()), language="text")
+        if chosen_name:
+            try:
+                path_json = (
+                    json_excel_dir
+                    / chosen_name
+                )
 
-if "injected_hashes" not in st.session_state:
-    st.session_state.injected_hashes = set()
+                json_payload = json.loads(
+                    path_json.read_text(
+                        encoding="utf-8"
+                    )
+                )
 
-inject_gs = st.button(
-    "📤 Intégrer dans Google Sheets",
-    type="primary",
-    use_container_width=True,
-    disabled=(json_payload is None),
-)
+            except Exception as e:
+                json_payload = None
+
+                st.error(
+                    "Les données de cette formation "
+                    "n'ont pas pu être chargées."
+                )
+
+                with st.expander(
+                    "Détails techniques",
+                    expanded=False,
+                ):
+                    st.exception(e)
+
+    else:
+        st.info(
+            "Aucune formation n'est encore prête "
+            "à être intégrée. Commencez par terminer "
+            "l'étape 2."
+        )
+
+    with st.expander(
+        "Options avancées",
+        expanded=False,
+    ):
+        st.caption(
+            "Utilisez cette option uniquement pour "
+            "importer manuellement des données déjà préparées."
+        )
+
+        manual_upload = st.file_uploader(
+            "Importer des données préparées",
+            type=["json"],
+            key="phase3_manual_upload",
+        )
+
+        if manual_upload is not None:
+            try:
+                json_payload = json.load(
+                    manual_upload
+                )
+
+                chosen_name = getattr(
+                    manual_upload,
+                    "name",
+                    "import_manuel.json",
+                )
+
+            except Exception as e:
+                json_payload = None
+
+                st.error(
+                    "Les données importées "
+                    "ne peuvent pas être utilisées."
+                )
+
+                st.exception(e)
+
+    if json_payload:
+        st.markdown(
+            "**État de la formation**"
+        )
+
+        st.markdown(
+            "✅ Analyse terminée  \n"
+            "✅ Synthèse terminée  \n"
+            "✅ Données prêtes"
+        )
+
+    if (
+        "injected_hashes"
+        not in st.session_state
+    ):
+        st.session_state.injected_hashes = set()
+
+    inject_gs = st.button(
+        "Intégrer dans l'Analyse globale des formations",
+        type="primary",
+        use_container_width=True,
+        disabled=(json_payload is None),
+    )
+
 
 if inject_gs and json_payload:
-    h = _payload_hash(json_payload)
+    h = _payload_hash(
+        json_payload
+    )
 
-    if h in st.session_state.injected_hashes:
-        st.warning("⚠️ Ce fichier semble déjà avoir été intégré pendant cette session.")
+    if (
+        h
+        in st.session_state.injected_hashes
+    ):
+        st.warning(
+            "⚠️ Cette formation semble déjà avoir été "
+            "intégrée pendant cette session."
+        )
+
     else:
-        with st.spinner("Intégration dans le suivi qualité en cours..."):
+        with st.spinner(
+            "Intégration dans l'Analyse globale "
+            "des formations en cours..."
+        ):
             try:
-                row_idx = append_json_to_google_sheet(json_payload)
+                row_idx = (
+                    append_json_to_google_sheet(
+                        json_payload
+                    )
+                )
 
-                st.session_state.injected_hashes.add(h)
+                st.session_state.injected_hashes.add(
+                    h
+                )
+
+                formation_name = str(
+                    json_payload.get(
+                        "Formation",
+                        "",
+                    )
+                    or ""
+                ).strip()
+
+                semestre_name = str(
+                    json_payload.get(
+                        "Semestre",
+                        "",
+                    )
+                    or ""
+                ).strip()
+
+                record_label = " — ".join(
+                    [
+                        value
+                        for value in (
+                            formation_name,
+                            semestre_name,
+                        )
+                        if value
+                    ]
+                )
+
+                if not record_label:
+                    record_label = (
+                        _friendly_training_label(
+                            chosen_name
+                            or "Formation"
+                        )
+                    )
 
                 st.success(
-                    "✅ Intégration réussie.\n"
-                    "Les données ont été ajoutées au tableau de suivi qualité : "
-                    "Analyse globale des formations.\n\n"
-                    f"📍 Ligne d'insertion : {row_idx}"
+                    "✅ Intégration réussie. "
+                    f"{record_label} a été ajouté(e) "
+                    "à l'Analyse globale des formations."
                 )
 
                 st.info(
-                    "Vous pouvez retrouver immédiatement cet enregistrement "
-                    f"à la ligne {row_idx} du Google Sheet."
+                    "Enregistrement disponible à la ligne "
+                    f"{row_idx} de l'Analyse globale "
+                    "des formations."
                 )
 
             except Exception as e:
                 st.error(
-                    "❌ Une erreur est survenue lors de l’intégration dans Google Sheets."
+                    "❌ Une erreur est survenue lors de "
+                    "l'intégration dans l'Analyse globale "
+                    "des formations."
                 )
-                st.exception(e)
+
+                with st.expander(
+                    "Détails techniques",
+                    expanded=False,
+                ):
+                    st.exception(e)
