@@ -776,7 +776,9 @@ st.markdown("---")
 # Phase 2 — Structuration des données
 # =====================================================
 
-st.subheader("Phase 2 - Structuration des données")
+st.subheader(
+    "Phase 2 — Analyse et synthèse des données qualité"
+)
 
 DIR_JSON_V2.mkdir(parents=True, exist_ok=True)
 DIR_JSON_ANALYSIS_2026.mkdir(parents=True, exist_ok=True)
@@ -797,16 +799,44 @@ phase2_options = (
 )
 
 
-def _phase2_option_label(value: str) -> str:
+def _friendly_training_label(
+    filename: str,
+) -> str:
+    label = Path(
+        filename
+    ).stem
+
+    label = re.sub(
+        r"_+",
+        " ",
+        label,
+    )
+
+    label = re.sub(
+        r"\s+",
+        " ",
+        label,
+    ).strip()
+
+    return label
+
+
+def _phase2_option_label(
+    value: str,
+) -> str:
     source, filename = value.split(
         "::",
         1,
     )
 
-    if source == "2026":
-        return f"2026 — {filename}"
+    label = _friendly_training_label(
+        filename
+    )
 
-    return f"Historique — {filename}"
+    if source == "2026":
+        return f"2026 — {label}"
+
+    return f"Archives — {label}"
 
 
 if not phase2_options:
@@ -825,35 +855,38 @@ if not phase2_options:
     )
 
 else:
+    selected_phase2 = st.selectbox(
+        "Choisir une formation :",
+        phase2_options,
+        index=0,
+        format_func=_phase2_option_label,
+    )
+
+    selected_source_kind = (
+        selected_phase2.split(
+            "::",
+            1,
+        )[0]
+    )
+
     with st.form(
         "form_excel",
         clear_on_submit=False,
     ):
-        c1, c2 = st.columns(
-            [2, 1]
-        )
-
-        with c1:
-            selected_phase2 = st.selectbox(
-                "Choisir un fichier d’analyse :",
-                phase2_options,
-                index=0,
-                format_func=_phase2_option_label,
-            )
-
-        with c2:
+        if selected_source_kind == "historique":
             demande_as_list = st.toggle(
-                "Sujets en liste (historique)",
+                "Conserver les sujets sous forme de liste",
                 value=True,
                 help=(
-                    "Ce réglage concerne uniquement "
-                    "l'ancien parcours historique. "
-                    "Il est ignoré pour les rapports 2026."
+                    "Réglage utilisé uniquement pour "
+                    "les anciennes formations."
                 ),
             )
+        else:
+            demande_as_list = True
 
         do_transform = st.form_submit_button(
-            "Structurer les données",
+            "Analyser et synthétiser les données",
             use_container_width=True,
             type="primary",
         )
