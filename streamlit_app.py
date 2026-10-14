@@ -9,6 +9,7 @@ import hashlib
 import streamlit as st
 
 from ui.authentication import require_authentication
+from ui.components import render_app_header
 
 # phase 1
 from utils.pdf_reader import read_pdf_all_text
@@ -297,27 +298,8 @@ def _safe_filename(value: str) -> str:
 # =====================================================
 
 project_root = Path(__file__).parent
-logo_path = project_root / "assets" / "logo_cesu83.jpeg"
 
-col_logo, col_title, col_spacer = st.columns([1, 2, 1])
-
-with col_logo:
-    if logo_path.exists():
-        st.image(str(logo_path), use_container_width=100)
-    else:
-        st.markdown(
-            "<div style='padding:14px;border:1px dashed #bbb;border-radius:8px;text-align:center;'>"
-            "Logo manquant<br><code>assets/logo_cesu83.jpeg</code></div>",
-            unsafe_allow_html=True,
-        )
-
-with col_title:
-    st.markdown(
-        "<h2 style='text-align:center;margin-top:0;'> CESU 83 — Extracteur de Rapports Qualité </h2>",
-        unsafe_allow_html=True,
-    )
-
-st.markdown("---")
+render_app_header()
 
 
 # =====================================================
