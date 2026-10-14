@@ -702,8 +702,13 @@ st.markdown("---")
 # Phase 2 — Structuration des données
 # =====================================================
 
-st.subheader(
-    "Phase 2 — Analyse et synthèse des données qualité"
+render_phase_intro(
+    2,
+    "Analyse et synthèse des données qualité",
+    (
+        "Sélectionnez une formation analysée afin de produire "
+        "la synthèse destinée à l'Analyse globale des formations."
+    ),
 )
 
 DIR_JSON_V2.mkdir(parents=True, exist_ok=True)
@@ -767,55 +772,53 @@ def _phase2_option_label(
 
 if not phase2_options:
     st.info(
-        """
-        ℹ️ Aucun fichier d'analyse n'est disponible pour le moment.
-
-        Pour utiliser la Phase 2, vous devez d'abord exécuter la Phase 1 :
-        1. Renseigner le nom de la formation.
-        2. Indiquer le semestre et l'année.
-        3. Charger le rapport qualité Digiforma au format PDF.
-        4. Cliquer sur « Analyser le rapport ».
-
-        Une fois l'analyse terminée, le fichier sera disponible pour cette étape.
-        """
+        "Aucune formation analysée n'est disponible pour le moment. "
+        "Commencez par analyser un rapport qualité à l'étape 1."
     )
 
 else:
-    selected_phase2 = st.selectbox(
-        "Choisir une formation :",
-        phase2_options,
-        index=0,
-        format_func=_phase2_option_label,
-    )
-
-    selected_source_kind = (
-        selected_phase2.split(
-            "::",
-            1,
-        )[0]
-    )
-
-    with st.form(
-        "form_excel",
-        clear_on_submit=False,
+    with st.container(
+        border=True,
     ):
-        if selected_source_kind == "historique":
-            demande_as_list = st.toggle(
-                "Conserver les sujets sous forme de liste",
-                value=True,
-                help=(
-                    "Réglage utilisé uniquement pour "
-                    "les anciennes formations."
-                ),
-            )
-        else:
-            demande_as_list = True
-
-        do_transform = st.form_submit_button(
-            "Analyser et synthétiser les données",
-            use_container_width=True,
-            type="primary",
+        selected_phase2 = st.selectbox(
+            "Formation analysée",
+            phase2_options,
+            index=0,
+            format_func=_phase2_option_label,
         )
+
+        selected_source_kind = (
+            selected_phase2.split(
+                "::",
+                1,
+            )[0]
+        )
+
+        with st.form(
+            "form_excel",
+            clear_on_submit=False,
+        ):
+            if selected_source_kind == "historique":
+                st.markdown(
+                    "**Options des anciennes formations**"
+                )
+
+                demande_as_list = st.toggle(
+                    "Conserver les sujets sous forme de liste",
+                    value=True,
+                    help=(
+                        "Réglage utilisé uniquement pour "
+                        "les anciennes formations."
+                    ),
+                )
+            else:
+                demande_as_list = True
+
+            do_transform = st.form_submit_button(
+                "Analyser et synthétiser les données",
+                use_container_width=True,
+                type="primary",
+            )
 
     if (
         do_transform
@@ -857,7 +860,7 @@ else:
 
             try:
                 with st.spinner(
-                    "Synthèse des données 2026 en cours..."
+                    "Analyse et synthèse des données qualité en cours..."
                 ):
                     synthesis_result = (
                         orchestrate_analysis_2026_syntheses(
@@ -871,8 +874,8 @@ else:
 
             except Exception as e:
                 st.error(
-                    "La synthèse 2026 n'a pas pu "
-                    "être finalisée."
+                    "L'analyse et la synthèse des données "
+                    "n'ont pas pu être finalisées."
                 )
                 st.exception(e)
                 st.stop()
@@ -903,7 +906,7 @@ else:
 
             try:
                 with st.spinner(
-                    "Structuration des données en cours..."
+                    "Analyse et synthèse des données qualité en cours..."
                 ):
                     json_excel = generate_json_excel(
                         v2_payload,
@@ -912,7 +915,7 @@ else:
 
             except Exception as e:
                 st.error(
-                    "La structuration historique "
+                    "L'analyse de cette ancienne formation "
                     "n'a pas pu être finalisée."
                 )
                 st.exception(e)
@@ -948,10 +951,10 @@ else:
         )
 
         st.success(
-            "✅ Structuration des données réussie. "
-            "Les données sont prêtes pour l’intégration "
-            "dans le suivi qualité. "
-            "Vous pouvez passer à la Phase 3."
+            "✅ Synthèse terminée. "
+            "Les données sont prêtes à être intégrées dans "
+            "l'Analyse globale des formations. "
+            "Vous pouvez passer à l'étape 3."
         )
 
 
