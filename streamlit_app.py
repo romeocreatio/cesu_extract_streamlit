@@ -468,6 +468,32 @@ def list_json_analysis_2026_files():
 
 st.subheader("Phase 1 - Analyse du rapport qualité Digiforma")
 
+phase1_2026_success = st.session_state.pop(
+    "phase1_2026_success",
+    None,
+)
+
+phase1_2026_issues = st.session_state.pop(
+    "phase1_2026_issues",
+    (),
+)
+
+if phase1_2026_success:
+    st.success(
+        phase1_2026_success
+    )
+
+    if phase1_2026_issues:
+        with st.expander(
+            "⚠️ Avertissements d'analyse 2026",
+            expanded=False,
+        ):
+            for issue in phase1_2026_issues:
+                st.markdown(
+                    f"- {issue}"
+                )
+
+
 with st.form("meta_form", clear_on_submit=False):
     c1, c2 = st.columns(2)
 
@@ -578,21 +604,19 @@ if submitted:
             except Exception:
                 pass
 
-            st.success(
+            st.session_state[
+                "phase1_2026_success"
+            ] = (
                 "✅ Analyse 2026 réussie. "
                 "Les données déterministes ont été extraites "
                 "et sont prêtes pour la Phase 2."
             )
 
-            if contract_2026.issues:
-                with st.expander(
-                    "⚠️ Avertissements d'analyse 2026",
-                    expanded=False,
-                ):
-                    for issue in contract_2026.issues:
-                        st.markdown(
-                            f"- {issue}"
-                        )
+            st.session_state[
+                "phase1_2026_issues"
+            ] = tuple(
+                contract_2026.issues
+            )
 
         except Exception as e:
             st.error(
@@ -600,8 +624,9 @@ if submitted:
                 "n'a pas pu être finalisée."
             )
             st.exception(e)
+            st.stop()
 
-        st.stop()
+        st.rerun()
 
     with st.spinner("Lecture du rapport en cours..."):
         full_text, pages_text, used_ocr = read_pdf_all_text(file_bytes)
