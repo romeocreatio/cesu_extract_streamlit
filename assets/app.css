@@ -74,3 +74,44 @@
     margin-top: 0.4rem;
     margin-bottom: 1.4rem;
 }
+
+/* =========================================================
+   Titres des étapes
+   ========================================================= */
+
+.cesu-phase-header {
+    margin-top: 0.25rem;
+    margin-bottom: 1.15rem;
+}
+
+.cesu-phase-title {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-size: 1.65rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #1f2937;
+}
+
+.cesu-phase-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    background: #1f2937;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    flex: 0 0 auto;
+}
+
+.cesu-phase-description {
+    margin-top: 0.45rem;
+    margin-left: 2.65rem;
+    color: #6b7280;
+    font-size: 0.92rem;
+    line-height: 1.45;
+}

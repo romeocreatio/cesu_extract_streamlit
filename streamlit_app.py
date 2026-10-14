@@ -9,7 +9,10 @@ import hashlib
 import streamlit as st
 
 from ui.authentication import require_authentication
-from ui.components import render_app_header
+from ui.components import (
+    render_app_header,
+    render_phase_intro,
+)
 
 # phase 1
 from utils.pdf_reader import read_pdf_all_text
@@ -373,7 +376,14 @@ def list_json_analysis_2026_files():
     )
 
 
-st.subheader("Phase 1 - Analyse du rapport qualité Digiforma")
+render_phase_intro(
+    1,
+    "Analyse du rapport qualité",
+    (
+        "Importez le rapport qualité Digiforma afin "
+        "d'en extraire les données nécessaires au suivi qualité."
+    ),
+)
 
 phase1_2026_success = st.session_state.pop(
     "phase1_2026_success",
@@ -392,7 +402,7 @@ if phase1_2026_success:
 
     if phase1_2026_issues:
         with st.expander(
-            "⚠️ Avertissements d'analyse 2026",
+            "ℹ️ Informations de contrôle",
             expanded=False,
         ):
             for issue in phase1_2026_issues:
@@ -405,12 +415,21 @@ with st.form("meta_form", clear_on_submit=False):
     c1, c2 = st.columns(2)
 
     with c1:
-        nom_formation = st.text_input("Nom de la formation", placeholder="ex: AFGSU 1")
+        nom_formation = st.text_input(
+            "Nom de la formation",
+            placeholder="ex: AFGSU 1",
+        )
 
     with c2:
-        semestre = st.text_input("Semestre", placeholder="ex: S1 2025")
+        semestre = st.text_input(
+            "Semestre",
+            placeholder="ex: S1 2026",
+        )
 
-    uploaded_pdf = st.file_uploader("Charger le rapport qualité", type=["pdf"])
+    uploaded_pdf = st.file_uploader(
+        "Rapport qualité Digiforma",
+        type=["pdf"],
+    )
 
     report_url = st.text_input(
         "Lien du rapport qualité (optionnel)",
@@ -454,8 +473,8 @@ if submitted:
 
     if is_2026 and is_hemoc_div:
         st.warning(
-            "Le traitement Hémoc-DIV 2026 n'est pas encore "
-            "intégré au nouveau moteur standard 2026."
+            "Le traitement de la formation Hémoc-DIV 2026 "
+            "n'est pas encore disponible dans cette version."
         )
         st.stop()
 
@@ -464,7 +483,7 @@ if submitted:
     if is_standard_2026:
         try:
             with st.spinner(
-                "Analyse déterministe du rapport 2026 en cours..."
+                "Analyse du rapport qualité en cours..."
             ):
                 report_2026 = orchestrate_report_2026(
                     file_bytes,
@@ -514,9 +533,9 @@ if submitted:
             st.session_state[
                 "phase1_2026_success"
             ] = (
-                "✅ Analyse 2026 réussie. "
-                "Les données déterministes ont été extraites "
-                "et sont prêtes pour la Phase 2."
+                "✅ Analyse du rapport terminée. "
+                "Les données ont été extraites et contrôlées. "
+                "Vous pouvez passer à l'étape 2."
             )
 
             st.session_state[
@@ -527,7 +546,7 @@ if submitted:
 
         except Exception as e:
             st.error(
-                "L'analyse déterministe 2026 "
+                "L'analyse du rapport "
                 "n'a pas pu être finalisée."
             )
             st.exception(e)
@@ -641,9 +660,9 @@ if submitted:
         pass
 
     st.success(
-        "✅ Analyse du rapport réussie. "
-        "Les données ont été extraites avec succès. "
-        "Vous pouvez passer à la Phase 2 pour structurer les données."
+        "✅ Analyse du rapport terminée. "
+        "Les données ont été extraites et contrôlées. "
+        "Vous pouvez passer à l'étape 2."
     )
 
     def _is_missing_or_empty(x):

@@ -34,6 +34,27 @@ def _load_app_styles():
     )
 
 
+def render_phase_intro(
+    number: int,
+    title: str,
+    description: str,
+):
+    st.markdown(
+        (
+            '<div class="cesu-phase-header">'
+            f'<div class="cesu-phase-title">'
+            f'<span class="cesu-phase-number">{number}</span>'
+            f'{title}'
+            '</div>'
+            f'<div class="cesu-phase-description">'
+            f'{description}'
+            '</div>'
+            '</div>'
+        ),
+        unsafe_allow_html=True,
+    )
+
+
 def render_app_header():
     _load_app_styles()
 
