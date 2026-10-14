@@ -1,0 +1,57 @@
+/* =========================================================
+   CESU 83 - Ecran d'authentification
+   ========================================================= */
+
+.cesu-login-header {
+    text-align: center;
+    margin-top: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.cesu-login-title {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-top: 0.8rem;
+    margin-bottom: 0.35rem;
+    color: #1f2937;
+}
+
+.cesu-login-subtitle {
+    font-size: 1rem;
+    color: #4b5563;
+    margin-bottom: 0.25rem;
+}
+
+.cesu-login-description {
+    font-size: 0.9rem;
+    color: #6b7280;
+}
+
+.cesu-login-card-title {
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 650;
+    color: #1f2937;
+    margin-bottom: 1rem;
+}
+
+.cesu-login-footer {
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.82rem;
+    margin-top: 1rem;
+}
+
+/* Bouton principal de connexion */
+div[data-testid="stButton"] > button[kind="primary"] {
+    width: 100%;
+    min-height: 2.8rem;
+    font-weight: 600;
+    border-radius: 0.55rem;
+}
+
+/* Champs légèrement plus doux visuellement */
+div[data-baseweb="input"] {
+    border-radius: 0.55rem;
+}
