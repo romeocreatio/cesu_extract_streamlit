@@ -193,11 +193,11 @@ def require_authentication():
         pass
 
     if not username or not password:
-        st.warning(
-            "Authentification non configurée — "
-            "accès non protégé."
+        st.error(
+            "Configuration de sécurité incomplète. "
+            "L'accès à l'application est bloqué."
         )
-        return
+        st.stop()
 
     if (
         "authenticated"
