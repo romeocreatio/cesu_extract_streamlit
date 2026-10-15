@@ -780,11 +780,22 @@ else:
     with st.container(
         border=True,
     ):
+        phase2_select_options = [
+            "",
+            *phase2_options,
+        ]
+
         selected_phase2 = st.selectbox(
             "Formation analysée",
-            phase2_options,
+            phase2_select_options,
             index=0,
-            format_func=_phase2_option_label,
+            format_func=lambda value: (
+                "— Sélectionner une formation —"
+                if not value
+                else _phase2_option_label(
+                    value
+                )
+            ),
         )
 
         selected_source_kind = (
@@ -792,6 +803,8 @@ else:
                 "::",
                 1,
             )[0]
+            if selected_phase2
+            else None
         )
 
         with st.form(
@@ -818,6 +831,7 @@ else:
                 "Analyser et synthétiser les données",
                 use_container_width=True,
                 type="primary",
+                disabled=(not selected_phase2),
             )
 
     if (
