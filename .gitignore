@@ -65,3 +65,10 @@ $RECYCLE.BIN/
 json_v2/*.json
 json_excel/*.json
 json_analysis_2026/*.json
+
+###############################################
+# 7. Secrets locaux hors Streamlit
+###############################################
+
+.env
+gcp_service_account.json
