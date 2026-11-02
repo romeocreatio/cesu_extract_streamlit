@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from statistics import median
 from typing import (
     Iterable,
@@ -690,6 +690,113 @@ def parse_distribution_line(
 
 
 # =====================================================
+# Recuperation conservative d'un libelle duplique
+# =====================================================
+
+def _recover_missing_label_from_neighbors(
+    lines: Sequence[
+        LayoutLine
+    ],
+    *,
+    line_index: int,
+    row: DistributionRow,
+) -> DistributionRow:
+    """
+    Recupere un libelle uniquement dans le cas tres
+    restrictif suivant :
+
+        meme libelle
+        <ligne numerique sans libelle>
+        meme libelle
+
+    Les deux lignes voisines doivent :
+    - etre sur la meme page ;
+    - contenir exactement le meme libelle normalise ;
+    - ne pas etre elles-memes des lignes de distribution.
+
+    Dans tous les autres cas, le libelle reste vide
+    et les garde-fous habituels s'appliquent.
+    """
+
+    if row.label.strip():
+        return row
+
+    if (
+        line_index <= 0
+        or line_index
+        >= len(lines) - 1
+    ):
+        return row
+
+    current = lines[
+        line_index
+    ]
+    previous = lines[
+        line_index - 1
+    ]
+    following = lines[
+        line_index + 1
+    ]
+
+    if (
+        previous.page_number
+        != current.page_number
+        or following.page_number
+        != current.page_number
+    ):
+        return row
+
+    if (
+        _find_numeric_tail(
+            previous
+        )
+        is not None
+        or _find_numeric_tail(
+            following
+        )
+        is not None
+    ):
+        return row
+
+    previous_text = (
+        previous.text.strip()
+    )
+    following_text = (
+        following.text.strip()
+    )
+
+    previous_normalized = (
+        normalize_layout_text(
+            previous_text
+        )
+    )
+    following_normalized = (
+        normalize_layout_text(
+            following_text
+        )
+    )
+
+    if (
+        not previous_normalized
+        or previous_normalized
+        != following_normalized
+    ):
+        return row
+
+    if not any(
+        char.isalpha()
+        for char
+        in previous_normalized
+    ):
+        return row
+
+    return replace(
+        row,
+        label=previous_text,
+    )
+
+
+# =====================================================
 # Total explicite
 # =====================================================
 
@@ -996,13 +1103,23 @@ def parse_distribution_lines(
         DistributionRow
     ] = []
 
-    for line in lines:
+    for line_index, line in enumerate(
+        lines
+    ):
 
         row = parse_distribution_line(
             line
         )
 
         if row is not None:
+
+            row = (
+                _recover_missing_label_from_neighbors(
+                    lines,
+                    line_index=line_index,
+                    row=row,
+                )
+            )
 
             rows.append(
                 row
