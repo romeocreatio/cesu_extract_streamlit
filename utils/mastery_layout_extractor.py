@@ -455,6 +455,32 @@ def _global_note_candidates(
 
     output = []
 
+    # Top visible Y coordinate of each page in the
+    # current context. Used only when an explicit
+    # /10 score crosses an immediate page break.
+    first_y_by_page = {}
+
+    for candidate_line in lines:
+
+        page_number = (
+            candidate_line.page_number
+        )
+
+        current_first_y = (
+            first_y_by_page.get(
+                page_number
+            )
+        )
+
+        if (
+            current_first_y is None
+            or candidate_line.y
+            < current_first_y
+        ):
+            first_y_by_page[
+                page_number
+            ] = candidate_line.y
+
     for line in lines:
 
         for word in line.words:
@@ -476,12 +502,6 @@ def _global_note_candidates(
 
             for other_line in lines:
 
-                if (
-                    other_line.page_number
-                    != line.page_number
-                ):
-                    continue
-
                 for other_word in (
                     other_line.words
                 ):
@@ -494,7 +514,9 @@ def _global_note_candidates(
                     if raw == "/":
 
                         if (
-                            other_word.x0
+                            other_line.page_number
+                            == line.page_number
+                            and other_word.x0
                             >= word.x0
                             and (
                                 other_word.x0
@@ -509,8 +531,10 @@ def _global_note_candidates(
 
                     elif raw == "10":
 
-                        if (
-                            other_line.y
+                        same_page = (
+                            other_line.page_number
+                            == line.page_number
+                            and other_line.y
                             > line.y
                             and (
                                 other_line.y
@@ -520,6 +544,32 @@ def _global_note_candidates(
                                 other_word.x0
                                 - word.x0
                             ) < 45
+                        )
+
+                        next_page_first_y = (
+                            first_y_by_page.get(
+                                other_line.page_number
+                            )
+                        )
+
+                        next_page = (
+                            other_line.page_number
+                            == line.page_number + 1
+                            and next_page_first_y
+                            is not None
+                            and (
+                                other_line.y
+                                - next_page_first_y
+                            ) < 20
+                            and abs(
+                                other_word.x0
+                                - word.x0
+                            ) < 45
+                        )
+
+                        if (
+                            same_page
+                            or next_page
                         ):
                             denominator_found = (
                                 True
