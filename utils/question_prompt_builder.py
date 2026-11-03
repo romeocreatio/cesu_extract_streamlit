@@ -357,12 +357,158 @@ SCHÉMA JSON EXACT
 # Sélection du prompt métier
 # =====================================================
 
+# =====================================================
+# Distribution categorielle libre
+# =====================================================
+
+DISTRIBUTION_CATEGORIES_PROMPT = """
+OBJECTIF
+
+Extraire la distribution categorielle explicitement
+presente pour la question ciblee.
+
+REGLES SPECIFIQUES
+
+- Reproduis exactement chaque libelle visible
+  dans la source.
+
+- Conserve l'ordre d'apparition des modalites.
+
+- Pour chaque modalite :
+  - nb_votants = effectif explicitement affiche ;
+  - pourcentage = pourcentage explicitement affiche.
+
+- Si un effectif ou un pourcentage est absent,
+  utilise null.
+
+- Ne calcule jamais un effectif a partir
+  d'un pourcentage.
+
+- Ne calcule jamais un pourcentage a partir
+  d'un effectif.
+
+- nb_votants au niveau racine correspond uniquement
+  au total de votants explicitement affiche.
+
+- Si aucune modalite exploitable n'est explicitement
+  presente, retourne une liste items vide.
+
+SCHEMA JSON EXACT
+
+{
+  "nb_votants": null,
+  "items": [
+    {
+      "label": "libelle exact de la source",
+      "nb_votants": null,
+      "pourcentage": null
+    }
+  ]
+}
+""".strip()
+
+
+# =====================================================
+# Distribution Oui / Non
+# =====================================================
+
+DISTRIBUTION_YES_NO_PROMPT = """
+OBJECTIF
+
+Extraire une distribution Oui / Non explicitement
+presente pour la question ciblee.
+
+REGLES SPECIFIQUES
+
+- Les modalites doivent correspondre explicitement
+  a Oui et Non dans la source.
+
+- Reproduis les libelles tels qu'ils apparaissent.
+
+- Pour chaque modalite :
+  - nb_votants = effectif explicitement affiche ;
+  - pourcentage = pourcentage explicitement affiche.
+
+- Si une valeur est absente, utilise null.
+
+- Ne calcule jamais une valeur manquante.
+
+- nb_votants au niveau racine correspond uniquement
+  au total de votants explicitement affiche.
+
+- Si Oui et Non ne sont pas tous les deux
+  identifiables, retourne une liste items vide.
+
+SCHEMA JSON EXACT
+
+{
+  "nb_votants": null,
+  "items": [
+    {
+      "label": "Oui",
+      "nb_votants": null,
+      "pourcentage": null
+    },
+    {
+      "label": "Non",
+      "nb_votants": null,
+      "pourcentage": null
+    }
+  ]
+}
+""".strip()
+
+
+# =====================================================
+# Note explicite sur 10
+# =====================================================
+
+SCORE_SUR_10_PROMPT = """
+OBJECTIF
+
+Extraire uniquement la note globale sur 10
+explicitement associee a la question ciblee.
+
+REGLES SPECIFIQUES
+
+- Utilise uniquement une note explicitement affichee.
+
+- La valeur doit etre comprise entre 0 et 10.
+
+- Ne calcule aucune moyenne.
+
+- Ne reconstruis aucune note a partir
+  d'autres valeurs.
+
+- Ne confonds pas cette note avec une autre note
+  visible dans le texte source.
+
+- Si aucune note sur 10 n'est explicitement
+  disponible pour cette question, utilise null.
+
+SCHEMA JSON EXACT
+
+{
+  "note_sur_10": null
+}
+""".strip()
+
+
 def _instructions_for_data_kind(
     data_kind: DataKind,
 ) -> str:
 
     if data_kind == "distribution_1_5":
         return DISTRIBUTION_PROMPT
+
+    if data_kind == "distribution_categories":
+        return DISTRIBUTION_CATEGORIES_PROMPT
+
+    if data_kind == "distribution_yes_no":
+        return DISTRIBUTION_YES_NO_PROMPT
+
+    if data_kind == "score_sur_10":
+        return SCORE_SUR_10_PROMPT
 
     if data_kind == "verbatims":
         return VERBATIMS_PROMPT
@@ -371,7 +517,7 @@ def _instructions_for_data_kind(
         return MASTERY_PROMPT
 
     raise NotImplementedError(
-        "Aucun prompt spécialisé pour "
+        "Aucun prompt specialise pour "
         f"data_kind={data_kind!r}."
     )
 

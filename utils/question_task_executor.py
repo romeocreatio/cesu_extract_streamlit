@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import (
     Callable,
     List,
+    Optional,
     Sequence,
 )
 
@@ -17,6 +18,9 @@ from utils.question_extraction_contracts import (
 from utils.question_extraction_tasks import (
     QuestionExtractionTask,
     QuestionOccurrenceTaskGroup,
+)
+from utils.question_hybrid_extractor import (
+    RecoverableExtractionError,
 )
 from utils.question_payload_parser import (
     parse_extraction_payload,
@@ -324,22 +328,25 @@ def execute_and_consolidate_question_groups(
         QuestionOccurrenceTaskGroup
     ],
     extractor: RawTaskExtractor,
+    *,
+    recoverable_issues: Optional[
+        List[str]
+    ] = None,
 ) -> List[
     OccurrenceExtractionResult
 ]:
     """
-    Pipeline déterministe complet au niveau question :
+    Execute et consolide les groupes d'occurrences.
 
-        groupes
-        -> tâches
-        -> extraction brute
-        -> parsing typé
-        -> résultats de chunks
-        -> consolidation par occurrence
+    Sans recoverable_issues, le comportement historique
+    est conserve : toute erreur remonte normalement.
 
-    Important :
-    cette fonction ne fusionne pas plusieurs
-    occurrences d'une même business_key.
+    Avec recoverable_issues, seule une
+    RecoverableExtractionError est toleree :
+    l'occurrence concernee est ignoree et son diagnostic
+    est ajoute a la liste fournie.
+
+    Les autres exceptions restent bloquantes.
     """
 
     tasks = _tasks_from_groups(
@@ -347,17 +354,57 @@ def execute_and_consolidate_question_groups(
     )
 
     if not tasks:
-
         return []
 
-    chunk_results = (
-        execute_question_extraction_tasks(
-            tasks=tasks,
-            extractor=extractor,
-        )
-    )
+    # Comportement historique par defaut.
+    if recoverable_issues is None:
 
-    return consolidate_question_results(
-        groups=groups,
-        results=chunk_results,
-    )
+        chunk_results = (
+            execute_question_extraction_tasks(
+                tasks=tasks,
+                extractor=extractor,
+            )
+        )
+
+        return consolidate_question_results(
+            groups=groups,
+            results=chunk_results,
+        )
+
+    # Mode tolerant explicite :
+    # chaque occurrence reste independante.
+    occurrences: List[
+        OccurrenceExtractionResult
+    ] = []
+
+    for group in groups:
+
+        try:
+            group_results = (
+                execute_question_extraction_tasks(
+                    tasks=group.tasks,
+                    extractor=extractor,
+                )
+            )
+
+            group_occurrences = (
+                consolidate_question_results(
+                    groups=[group],
+                    results=group_results,
+                )
+            )
+
+            occurrences.extend(
+                group_occurrences
+            )
+
+        except RecoverableExtractionError as exc:
+
+            recoverable_issues.append(
+                f"{group.business_key} / "
+                f"occurrence "
+                f"{group.business_occurrence_index}: "
+                f"{exc}"
+            )
+
+    return occurrences

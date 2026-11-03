@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import (
+    List,
     Optional,
     Tuple,
 )
@@ -110,6 +111,11 @@ class Preformation2026PipelineResult:
         OccurrenceExtractionResult,
         ...,
     ]
+
+    issues: Tuple[
+        str,
+        ...,
+    ] = ()
 
     @property
     def has_preformation(
@@ -385,10 +391,15 @@ def extract_preformation_2026(
     # 9. Exécution + consolidation par occurrence
     # -------------------------------------------------
 
+    recoverable_issues: List[str] = []
+
     occurrences = (
         execute_and_consolidate_question_groups(
             groups=groups,
             extractor=extractor,
+            recoverable_issues=(
+                recoverable_issues
+            ),
         )
     )
 
@@ -422,5 +433,8 @@ def extract_preformation_2026(
         ),
         occurrences=tuple(
             occurrences
+        ),
+        issues=tuple(
+            recoverable_issues
         ),
     )

@@ -62,6 +62,9 @@ from utils.output_adapter_2026 import (
     OutputRow2026,
     build_output_row_2026,
 )
+from utils.question_hybrid_extractor import (
+    FallbackTaskExtractor,
+)
 
 
 @dataclass(
@@ -114,6 +117,9 @@ def orchestrate_report_2026(
     ] = None,
     intervenants_synthesis: Optional[
         IntervenantsSynthesis2026
+    ] = None,
+    fallback_extractor: Optional[
+        FallbackTaskExtractor
     ] = None,
     ocr_on_empty: bool = True,
     dpi: int = 300,
@@ -198,6 +204,9 @@ def orchestrate_report_2026(
     preformation_pipeline = (
         extract_preformation_2026(
             pdf_bytes,
+            fallback_extractor=(
+                fallback_extractor
+            ),
             ocr_on_empty=ocr_on_empty,
             dpi=dpi,
         )
@@ -219,6 +228,9 @@ def orchestrate_report_2026(
     a_chaud_pipeline = (
         extract_a_chaud_2026(
             pdf_bytes,
+            fallback_extractor=(
+                fallback_extractor
+            ),
             ocr_on_empty=ocr_on_empty,
             dpi=dpi,
         )
@@ -237,6 +249,9 @@ def orchestrate_report_2026(
     a_froid_pipeline = (
         extract_a_froid_2026(
             pdf_bytes,
+            fallback_extractor=(
+                fallback_extractor
+            ),
             ocr_on_empty=ocr_on_empty,
             dpi=dpi,
         )

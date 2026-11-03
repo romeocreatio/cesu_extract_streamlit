@@ -18,6 +18,12 @@ from utils.question_extraction_tasks import (
 from utils.question_prompt_builder import (
     build_question_task_prompt,
 )
+from utils.question_payload_parser import (
+    parse_extraction_payload,
+)
+from utils.question_hybrid_extractor import (
+    RecoverableExtractionError,
+)
 
 
 # =====================================================
@@ -70,31 +76,74 @@ class QuestionOpenAIExtractor:
         task: QuestionExtractionTask,
     ) -> Dict[str, object]:
         """
-        Extrait le JSON brut pour UNE tâche.
+        Extrait le JSON brut pour une seule tache.
+
+        Une indisponibilite du lecteur IA,
+        une absence de prompt specialise ou
+        une reponse IA non conforme devient
+        une erreur recuperable.
         """
 
-        built = build_question_task_prompt(
-            task
-        )
+        try:
+            built = build_question_task_prompt(
+                task
+            )
 
-        raw = self.llm_call(
-            built.prompt_master,
-            task.text,
-            built.metadata,
-            self.model_override,
-        )
+        except NotImplementedError as exc:
+
+            raise RecoverableExtractionError(
+                "Fallback IA non disponible pour "
+                f"{task.task_id}: "
+                f"{exc}"
+            ) from exc
+
+        try:
+            raw = self.llm_call(
+                built.prompt_master,
+                task.text,
+                built.metadata,
+                self.model_override,
+            )
+
+        except Exception as exc:
+
+            raise RecoverableExtractionError(
+                "Fallback IA indisponible pour "
+                f"{task.task_id}: "
+                f"{type(exc).__name__}: "
+                f"{exc}"
+            ) from exc
 
         if not isinstance(
             raw,
             dict,
         ):
-            raise TypeError(
-                "L'extracteur LLM doit retourner "
-                "un objet JSON/dict pour "
-                f"{task.task_id}. "
-                f"Type reçu : "
-                f"{type(raw).__name__}"
+            raise RecoverableExtractionError(
+                "Fallback IA non conforme pour "
+                f"{task.task_id}: "
+                "un objet JSON/dict etait attendu, "
+                f"type recu={type(raw).__name__}."
             )
+
+        # Validation par le meme parseur type
+        # utilise par l'executeur du moteur.
+        try:
+            parse_extraction_payload(
+                data_kind=task.data_kind,
+                raw=raw,
+            )
+
+        except (
+            TypeError,
+            ValueError,
+        ) as exc:
+
+            raise RecoverableExtractionError(
+                "Fallback IA invalide pour "
+                f"{task.task_id}: "
+                f"{type(exc).__name__}: "
+                f"{exc}"
+            ) from exc
 
         return raw
 

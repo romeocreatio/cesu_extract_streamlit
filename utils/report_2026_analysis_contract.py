@@ -76,6 +76,7 @@ class Report2026AnalysisContract:
     deterministic_output: OutputRow2026
     synthesis_sources: Report2026SynthesisSources
     issues: Tuple[str, ...]
+    notices: Tuple[str, ...] = ()
 
 
 def _collect_business_issues(
@@ -83,7 +84,39 @@ def _collect_business_issues(
 ) -> Tuple[str, ...]:
     collected = []
 
-    groups = (
+    # Extraction issues are collected separately from
+    # business-model issues. getattr keeps compatibility
+    # with pipelines that do not expose issues yet.
+    pipeline_groups = (
+        (
+            "preformation",
+            report.preformation_pipeline,
+        ),
+        (
+            "a_chaud",
+            report.a_chaud_pipeline,
+        ),
+        (
+            "a_froid",
+            report.a_froid_pipeline,
+        ),
+        (
+            "intervenants",
+            report.intervenants_pipeline,
+        ),
+    )
+
+    for prefix, pipeline in pipeline_groups:
+        for issue in getattr(
+            pipeline,
+            "issues",
+            (),
+        ):
+            collected.append(
+                f"{prefix} extraction: {issue}"
+            )
+
+    model_groups = (
         (
             "preformation",
             report.preformation_model,
@@ -102,7 +135,7 @@ def _collect_business_issues(
         ),
     )
 
-    for prefix, model in groups:
+    for prefix, model in model_groups:
         for issue in getattr(
             model,
             "issues",
@@ -114,6 +147,29 @@ def _collect_business_issues(
 
     return tuple(
         collected
+    )
+
+
+def _collect_notices(
+    report: Report2026OrchestrationResult,
+) -> Tuple[str, ...]:
+    """
+    Informations de controle non bloquantes.
+
+    Une section reellement absente du rapport source
+    n'est pas une erreur d'extraction.
+    """
+
+    notices = []
+
+    if not report.a_froid_pipeline.has_a_froid:
+        notices.append(
+            "\u00c9valuation \u00e0 froid absente "
+            "du rapport source."
+        )
+
+    return tuple(
+        notices
     )
 
 
@@ -239,6 +295,9 @@ def build_report_2026_analysis_contract(
         deterministic_output=row,
         synthesis_sources=synthesis_sources,
         issues=_collect_business_issues(
+            report
+        ),
+        notices=_collect_notices(
             report
         ),
     )
@@ -399,6 +458,9 @@ def report_2026_analysis_to_dict(
         "issues": list(
             contract.issues
         ),
+        "notices": list(
+            contract.notices
+        ),
     }
 
 
@@ -540,15 +602,25 @@ def report_2026_analysis_from_dict(
         label="payload",
     )
 
+    expected_payload_keys = (
+        "schema_version",
+        "metadata",
+        "deterministic_output",
+        "synthesis_sources",
+        "issues",
+    )
+
+    # Compatibilite avec les analyses Phase 1
+    # creees avant l'ajout des notices.
+    if "notices" in payload:
+        expected_payload_keys = (
+            expected_payload_keys
+            + ("notices",)
+        )
+
     _expect_exact_keys(
         payload,
-        (
-            "schema_version",
-            "metadata",
-            "deterministic_output",
-            "synthesis_sources",
-            "issues",
-        ),
+        expected_payload_keys,
         label="payload",
     )
 
@@ -943,6 +1015,14 @@ def report_2026_analysis_from_dict(
         label="issues",
     )
 
+    notices = _expect_string_tuple(
+        payload.get(
+            "notices",
+            [],
+        ),
+        label="notices",
+    )
+
     return Report2026AnalysisContract(
         schema_version=schema_version,
         metadata=metadata,
@@ -954,6 +1034,7 @@ def report_2026_analysis_from_dict(
             intervenants=intervenants,
         ),
         issues=issues,
+        notices=notices,
     )
 
 

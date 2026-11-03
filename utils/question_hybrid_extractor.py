@@ -51,6 +51,18 @@ FallbackTaskExtractor = Callable[
 ]
 
 
+class RecoverableExtractionError(RuntimeError):
+    """
+    Extraction impossible pour une occurrence source,
+    sans incoherence interne du moteur.
+
+    Cette exception peut etre interceptee a la frontiere
+    d'une occurrence afin de conserver les autres donnees
+    du rapport et d'enregistrer une issue explicite.
+    """
+
+
+
 # =====================================================
 # Extracteur déterministe -> fallback
 # =====================================================
@@ -304,7 +316,7 @@ class QuestionHybridExtractor:
     ) -> object:
 
         if self.fallback_extractor is None:
-            raise RuntimeError(
+            raise RecoverableExtractionError(
                 "Extraction déterministe "
                 "indisponible et aucun fallback "
                 "n'est configuré pour "
