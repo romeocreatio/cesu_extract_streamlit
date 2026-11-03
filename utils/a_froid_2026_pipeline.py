@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import (
+    List,
     Optional,
     Tuple,
 )
@@ -113,6 +114,11 @@ class AFroid2026PipelineResult:
         OccurrenceExtractionResult,
         ...,
     ]
+
+    issues: Tuple[
+        str,
+        ...,
+    ] = ()
 
     @property
     def has_a_froid(
@@ -396,10 +402,15 @@ def extract_a_froid_2026(
     # 9. Exécution + consolidation par occurrence
     # -------------------------------------------------
 
+    recoverable_issues: List[str] = []
+
     occurrences = (
         execute_and_consolidate_question_groups(
             groups=groups,
             extractor=extractor,
+            recoverable_issues=(
+                recoverable_issues
+            ),
         )
     )
 
@@ -433,5 +444,8 @@ def extract_a_froid_2026(
         ),
         occurrences=tuple(
             occurrences
+        ),
+        issues=tuple(
+            recoverable_issues
         ),
     )

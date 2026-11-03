@@ -26,6 +26,9 @@ from utils.convert_v2_to_excel import generate_json_excel
 from utils.report_2026_orchestrator import (
     orchestrate_report_2026,
 )
+from utils.question_openai_extractor import (
+    make_question_openai_extractor,
+)
 from utils.report_2026_analysis_contract import (
     build_report_2026_analysis_contract,
     report_2026_analysis_dumps,
@@ -395,19 +398,33 @@ phase1_2026_issues = st.session_state.pop(
     (),
 )
 
+phase1_2026_notices = st.session_state.pop(
+    "phase1_2026_notices",
+    (),
+)
+
 if phase1_2026_success:
     st.success(
         phase1_2026_success
     )
 
-    if phase1_2026_issues:
+    phase1_2026_control_messages = (
+        tuple(
+            phase1_2026_notices
+        )
+        + tuple(
+            phase1_2026_issues
+        )
+    )
+
+    if phase1_2026_control_messages:
         with st.expander(
-            "ℹ️ Informations de contrôle",
+            "\u2139 Informations de contr\u00f4le",
             expanded=False,
         ):
-            for issue in phase1_2026_issues:
+            for message in phase1_2026_control_messages:
                 st.markdown(
-                    f"- {issue}"
+                    f"- {message}"
                 )
 
 
@@ -485,11 +502,18 @@ if submitted:
             with st.spinner(
                 "Analyse du rapport qualité en cours..."
             ):
+                fallback_2026 = (
+                    make_question_openai_extractor()
+                )
+
                 report_2026 = orchestrate_report_2026(
                     file_bytes,
                     formation=nom_formation.strip(),
                     semestre=semestre.strip(),
                     report_url=report_url.strip(),
+                    fallback_extractor=(
+                        fallback_2026
+                    ),
                     ocr_on_empty=False,
                 )
 
@@ -542,6 +566,12 @@ if submitted:
                 "phase1_2026_issues"
             ] = tuple(
                 contract_2026.issues
+            )
+
+            st.session_state[
+                "phase1_2026_notices"
+            ] = tuple(
+                contract_2026.notices
             )
 
         except Exception as e:

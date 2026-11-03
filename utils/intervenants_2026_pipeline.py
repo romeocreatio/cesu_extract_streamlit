@@ -205,6 +205,24 @@ def _clean_answer_lines(
     for index, line in enumerate(
         lines
     ):
+
+        # Un num?ro de page peut ?tre inject? au milieu
+        # d'un libell? lorsque la question traverse
+        # une coupure de page. Il ne doit pas participer
+        # ? la reconstruction du prompt.
+        if line.isdigit():
+
+            page_number = int(
+                line
+            )
+
+            if (
+                task.block_start_page
+                <= page_number
+                <= task.block_end_page
+            ):
+                continue
+
         accumulated.append(
             line
         )
